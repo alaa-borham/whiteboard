@@ -74,6 +74,25 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
 .note-del:hover{opacity:1;background:rgba(255,255,255,.75)}
 .note-grip{position:absolute;top:5px;inset-inline-start:8px;color:rgba(0,0,0,.28);font-size:.8rem;cursor:grab;user-select:none}
 @media (max-width:600px){ header .brand small{display:none} .toolbar{gap:7px} }
+/* ── المخططات (Diagrams) */
+.dg-palette{display:flex;gap:5px;flex-wrap:wrap}
+.dg-shape-btn{width:36px;height:30px;border:1.5px solid #d3dcc8;border-radius:7px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px}
+.dg-shape-btn:hover{border-color:var(--g1);background:#f1f7e8}
+.dg-shape-btn svg{width:100%;height:100%;display:block}
+.dg-hint{font-size:.76rem;color:#888;margin:2px 0 8px}
+#dg-wrap{position:relative;direction:ltr;width:100%;height:min(66vh,600px);overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px}
+#dg-svg{display:block;touch-action:none;user-select:none}
+.dg-shape{cursor:grab}
+.dg-shape .dg-body{transition:stroke .1s}
+.dg-shape.sel .dg-body{stroke-dasharray:0}
+.dg-handle{fill:#fff;stroke:var(--g2);stroke-width:1.5;cursor:nwse-resize}
+.dg-port{fill:var(--g1);stroke:#fff;stroke-width:1.5;cursor:crosshair}
+.dg-edge{stroke:#555;stroke-width:2;fill:none;cursor:pointer}
+.dg-edge-hit{stroke:transparent;stroke-width:12;fill:none;cursor:pointer}
+.dg-edge.sel{stroke:var(--g2);stroke-width:3}
+.dg-selbox{fill:none;stroke:var(--g2);stroke-width:1.3;stroke-dasharray:5 3;pointer-events:none}
+body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
+#dg-connect-btn.on{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2)}
 </style>
 </head>
 <body>
@@ -86,6 +105,7 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
   <button class="tab active" data-mode="draw"  onclick="setMode('draw')">✏️ رسم حر</button>
   <button class="tab"         data-mode="tasks" onclick="setMode('tasks')">📋 لوحة المهام</button>
   <button class="tab"         data-mode="notes" onclick="setMode('notes')">🗒️ ملاحظات لاصقة</button>
+  <button class="tab"         data-mode="diagram" onclick="setMode('diagram')">🔷 مخططات</button>
 </div>
 
 <main>
@@ -134,6 +154,29 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
     </div>
     <div id="notes-board"></div>
   </section>
+
+  <!-- ── وضع المخططات (Diagrams) -->
+  <section id="pane-diagram" class="pane" style="display:none">
+    <div class="toolbar">
+      <div class="dg-palette" id="dg-palette"></div>
+      <div class="sep"></div>
+      <span class="tool-lbl">تعبئة</span>
+      <div class="swatches" id="dg-fills"></div>
+      <span class="tool-lbl">حدود</span>
+      <div class="swatches" id="dg-strokes"></div>
+      <div class="sep"></div>
+      <button class="btn btn-outline" id="dg-connect-btn" onclick="dgToggleConnect()">🔗 توصيل</button>
+      <button class="btn btn-outline" onclick="dgEditSelText()">✎ نص</button>
+      <button class="btn btn-outline" onclick="dgUndoDg()">↶ تراجع</button>
+      <button class="btn btn-outline" onclick="dgDeleteSel()">🗑 حذف</button>
+      <div class="sep"></div>
+      <button class="btn btn-info" onclick="dgExportPng()">🖼️ PNG</button>
+      <button class="btn btn-info" onclick="dgExportSvg()">⬇️ SVG</button>
+      <button class="btn btn-danger" onclick="dgClear()">مسح الكل</button>
+    </div>
+    <div class="dg-hint">أضف شكلاً من الأيقونات، اسحبه لتحريكه، اسحب المقابض الزرقاء لتغيير الحجم، انقر مزدوجاً للكتابة بداخله. للربط: اسحب من النقطة الخضراء على يمين الشكل إلى شكل آخر، أو استخدم زر «🔗 توصيل» ثم انقر شكلين.</div>
+    <div id="dg-wrap"><svg id="dg-svg" width="1600" height="1000" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  </section>
 </main>
 
 <script>
@@ -150,12 +193,13 @@ const S = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, l
 // ═══ تبديل الأوضاع ═══
 function setMode(m){
   S.mode = m;
-  ['draw','tasks','notes'].forEach(k=> document.getElementById('pane-'+k).style.display = (k===m)?'':'none');
+  ['draw','tasks','notes','diagram'].forEach(k=> document.getElementById('pane-'+k).style.display = (k===m)?'':'none');
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.mode===m));
   LS.set('mode', m);
-  if (m==='draw')  loadCanvas();
-  if (m==='tasks') renderBoard();
-  if (m==='notes') renderNotes();
+  if (m==='draw')    loadCanvas();
+  if (m==='tasks')   renderBoard();
+  if (m==='notes')   renderNotes();
+  if (m==='diagram'){ dg=dgLoad(); dgSel=dgSelEdge=null; dgSetConnect(false); renderDiagram(); }
 }
 
 /* ═══ الرسم الحر ═══ */
@@ -297,11 +341,224 @@ function addNote(color){
 }
 function clearNotes(){ if(!confirm('حذف كل الملاحظات؟')) return; notes=[]; saveNotes(); renderNotes(); }
 
+/* ═══ المخططات (Diagrams) ═══ */
+const DG_TYPES = [
+  { t:'rect',          name:'مستطيل' },
+  { t:'round',         name:'مستطيل دائري' },
+  { t:'ellipse',       name:'دائرة/بيضوي' },
+  { t:'terminator',    name:'بداية/نهاية' },
+  { t:'diamond',       name:'قرار (معيّن)' },
+  { t:'parallelogram', name:'إدخال/إخراج' },
+  { t:'hexagon',       name:'تحضير (سداسي)' },
+  { t:'arrow',         name:'سهم/مرحلة' },
+];
+const DG_FILLS   = ['#ffffff','#e3f2fd','#e8f5e9','#fff8e1','#fce4ec','#ede7f6','#eceff1','#111111'];
+const DG_STROKES = ['#333333','#1565c0','#2e7d32','#e65100','#c2185b','#6a1b9a','#00838f','#e53935'];
+let dg = { shapes:[], edges:[] };
+let dgSel=null, dgSelEdge=null, dgConnect=false, dgConnectFrom=null, dgAct=null, dgInited=false, dgAddIdx=0;
+let dgFill='#ffffff', dgStroke='#333333';
+let dgUndoStack=[];
+
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function dgLoad(){ try{ const d=JSON.parse(LS.get('diagram','')); if(d&&d.shapes) return d; }catch(_){} return { shapes:[], edges:[] }; }
+function dgSave(){ LS.set('diagram', JSON.stringify(dg)); }
+function dgSnapshot(){ dgUndoStack.push(JSON.stringify(dg)); if(dgUndoStack.length>40) dgUndoStack.shift(); }
+function dgUndoDg(){ if(!dgUndoStack.length) return; dg=JSON.parse(dgUndoStack.pop()); dgSel=dgSelEdge=null; dgSave(); renderDiagram(); }
+function dgShape(id){ return dg.shapes.find(s=>s.id===id); }
+
+// ── أيقونة الشكل في اللوحة (SVG مصغّر)
+function dgIcon(t){
+  const a='fill="#eef4e6" stroke="#4a5a3a" stroke-width="2"';
+  switch(t){
+    case 'round':         return `<svg viewBox="0 0 40 32"><rect ${a} x="4" y="6" width="32" height="20" rx="6"/></svg>`;
+    case 'ellipse':       return `<svg viewBox="0 0 40 32"><ellipse ${a} cx="20" cy="16" rx="16" ry="11"/></svg>`;
+    case 'terminator':    return `<svg viewBox="0 0 40 32"><rect ${a} x="4" y="8" width="32" height="16" rx="8"/></svg>`;
+    case 'diamond':       return `<svg viewBox="0 0 40 32"><polygon ${a} points="20,4 36,16 20,28 4,16"/></svg>`;
+    case 'parallelogram': return `<svg viewBox="0 0 40 32"><polygon ${a} points="10,6 36,6 30,26 4,26"/></svg>`;
+    case 'hexagon':       return `<svg viewBox="0 0 40 32"><polygon ${a} points="10,6 30,6 38,16 30,26 10,26 2,16"/></svg>`;
+    case 'arrow':         return `<svg viewBox="0 0 40 32"><polygon ${a} points="4,6 28,6 38,16 28,26 4,26 12,16"/></svg>`;
+    default:              return `<svg viewBox="0 0 40 32"><rect ${a} x="4" y="7" width="32" height="18"/></svg>`;
+  }
+}
+function dgBuildPalette(){
+  const p=document.getElementById('dg-palette');
+  p.innerHTML=DG_TYPES.map(d=>`<button class="dg-shape-btn" title="${d.name}" onclick="dgAddShape('${d.t}')">${dgIcon(d.t)}</button>`).join('');
+  const f=document.getElementById('dg-fills');
+  f.innerHTML=DG_FILLS.map((c,i)=>`<div class="swatch${i===0?' sel':''}" data-f="${c}" style="background:${c}" onclick="dgPickFill('${c}')"></div>`).join('');
+  const s=document.getElementById('dg-strokes');
+  s.innerHTML=DG_STROKES.map((c,i)=>`<div class="swatch${i===0?' sel':''}" data-s="${c}" style="background:${c}" onclick="dgPickStroke('${c}')"></div>`).join('');
+}
+function dgPickFill(c){ dgFill=c; document.querySelectorAll('#dg-fills .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.f===c));
+  if(dgSel){ dgSnapshot(); dgShape(dgSel).fill=c; dgSave(); renderDiagram(); } }
+function dgPickStroke(c){ dgStroke=c; document.querySelectorAll('#dg-strokes .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.s===c));
+  if(dgSel){ dgSnapshot(); dgShape(dgSel).stroke=c; dgSave(); renderDiagram(); } }
+
+function dgAddShape(t){
+  dgSnapshot();
+  const wrap=document.getElementById('dg-wrap');
+  const isE=(t==='ellipse');
+  const w=isE?96:130, h=(t==='ellipse'||t==='diamond')?90:58;
+  const base=40 + (dgAddIdx%6)*26;
+  const x=Math.round((wrap.scrollLeft||0)+60+base), y=Math.round((wrap.scrollTop||0)+50+base);
+  dgAddIdx++;
+  dg.shapes.push({ id:uid(), type:t, x, y, w, h, text:'', fill:dgFill, stroke:dgStroke });
+  dgSel=dg.shapes[dg.shapes.length-1].id; dgSelEdge=null;
+  dgSave(); renderDiagram();
+}
+
+// ── هندسة حواف الأسهم (تعامل الشكل كمستطيل محيط)
+function dgEdgePoint(s, tx, ty){
+  const cx=s.x+s.w/2, cy=s.y+s.h/2; let dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc=1/Math.max(Math.abs(dx)/(s.w/2), Math.abs(dy)/(s.h/2));
+  return { x:cx+dx*sc, y:cy+dy*sc };
+}
+function dgEdgeGeom(ed){
+  const a=dgShape(ed.from), b=dgShape(ed.to); if(!a||!b) return null;
+  const p1=dgEdgePoint(a, b.x+b.w/2, b.y+b.h/2);
+  const p2=dgEdgePoint(b, a.x+a.w/2, a.y+a.h/2);
+  return { d:`M${p1.x},${p1.y} L${p2.x},${p2.y}`, mx:(p1.x+p2.x)/2, my:(p1.y+p2.y)/2 };
+}
+function dgAddEdge(from,to){
+  if(from===to) return;
+  if(dg.edges.some(e=>e.from===from&&e.to===to)) return;
+  dgSnapshot(); dg.edges.push({ id:uid(), from, to, label:'' }); dgSave(); renderDiagram();
+}
+
+// ── رسم جسم الشكل بإحداثيات محلية (0..w , 0..h)
+function dgBody(s){
+  const w=s.w,h=s.h,f=s.fill||'#fff',st=s.stroke||'#333';
+  const a=`class="dg-body" fill="${f}" stroke="${st}" stroke-width="1.7"`;
+  switch(s.type){
+    case 'ellipse':       return `<ellipse ${a} cx="${w/2}" cy="${h/2}" rx="${w/2}" ry="${h/2}"/>`;
+    case 'round':         return `<rect ${a} x="0" y="0" width="${w}" height="${h}" rx="12" ry="12"/>`;
+    case 'terminator':    return `<rect ${a} x="0" y="0" width="${w}" height="${h}" rx="${h/2}" ry="${h/2}"/>`;
+    case 'diamond':       return `<polygon ${a} points="${w/2},0 ${w},${h/2} ${w/2},${h} 0,${h/2}"/>`;
+    case 'parallelogram':{ const k=Math.min(w*0.22,26); return `<polygon ${a} points="${k},0 ${w},0 ${w-k},${h} 0,${h}"/>`; }
+    case 'hexagon':      { const k=Math.min(w*0.22,24); return `<polygon ${a} points="${k},0 ${w-k},0 ${w},${h/2} ${w-k},${h} ${k},${h} 0,${h/2}"/>`; }
+    case 'arrow':        { const k=Math.min(h*0.5,24); return `<polygon ${a} points="0,0 ${w-k},0 ${w},${h/2} ${w-k},${h} 0,${h} ${k},${h/2}"/>`; }
+    default:              return `<rect ${a} x="0" y="0" width="${w}" height="${h}"/>`;
+  }
+}
+function dgTextEl(s){
+  if(!s.text) return '';
+  const lines=String(s.text).split('\n'), lh=15, sy=s.h/2-(lines.length-1)*lh/2;
+  return `<text x="${s.w/2}" y="${sy}" text-anchor="middle" dominant-baseline="middle" font-size="13" fill="${s.textColor||'#222'}" style="pointer-events:none">`+
+    lines.map((ln,i)=>`<tspan x="${s.w/2}" dy="${i===0?0:lh}">${esc(ln)}</tspan>`).join('')+`</text>`;
+}
+function dgHandles(s){
+  const w=s.w,h=s.h,hs=9, C=[[0,0],[w,0],[w,h],[0,h]];
+  let r=`<rect class="dg-selbox" x="-3" y="-3" width="${w+6}" height="${h+6}"/>`;
+  r+=C.map((c,i)=>`<rect class="dg-handle" data-h="${i}" x="${c[0]-hs/2}" y="${c[1]-hs/2}" width="${hs}" height="${hs}"/>`).join('');
+  r+=`<circle class="dg-port" data-port="1" cx="${w}" cy="${h/2}" r="6"/>`;
+  return r;
+}
+function renderDiagram(){
+  const svg=document.getElementById('dg-svg'); if(!svg) return;
+  let h=`<defs><marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker></defs>`;
+  dg.edges.forEach(ed=>{ const g=dgEdgeGeom(ed); if(!g) return;
+    h+=`<path class="dg-edge-hit" data-eid="${ed.id}" d="${g.d}"/>`;
+    h+=`<path class="dg-edge${dgSelEdge===ed.id?' sel':''}" data-eid="${ed.id}" d="${g.d}" marker-end="url(#dg-arrow)"/>`;
+    if(ed.label) h+=`<text x="${g.mx}" y="${g.my-5}" text-anchor="middle" font-size="12" fill="#444" style="paint-order:stroke;stroke:#fff;stroke-width:3;pointer-events:none">${esc(ed.label)}</text>`;
+  });
+  dg.shapes.forEach(s=>{
+    h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+(dgSel===s.id?dgHandles(s):'')+`</g>`;
+  });
+  if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a) h+=`<line x1="${a.x+a.w}" y1="${a.y+a.h/2}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; }
+  svg.innerHTML=h;
+}
+
+function dgSvgPos(e){ const r=document.getElementById('dg-svg').getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+function dgDown(e){
+  const t=e.target, p=dgSvgPos(e);
+  if(t.classList.contains('dg-handle')){ e.preventDefault(); const s=dgShape(dgSel); dgSnapshot(); dgAct={type:'resize',id:dgSel,h:+t.dataset.h,ox:s.x,oy:s.y,ow:s.w,oh:s.h,sx:p.x,sy:p.y}; return; }
+  if(t.classList.contains('dg-port')){ e.preventDefault(); dgAct={type:'connect',from:dgSel,cur:p}; renderDiagram(); return; }
+  const g=t.closest('.dg-shape');
+  if(g){ const id=g.dataset.id;
+    if(dgConnect){ if(!dgConnectFrom){ dgConnectFrom=id; dgSel=id; dgSelEdge=null; renderDiagram(); } else { dgAddEdge(dgConnectFrom,id); dgConnectFrom=null; dgSetConnect(false); } return; }
+    e.preventDefault(); dgSel=id; dgSelEdge=null; const s=dgShape(id);
+    dgSnapshot(); dgAct={type:'move',id,ox:s.x,oy:s.y,sx:p.x,sy:p.y,moved:false}; renderDiagram(); return;
+  }
+  const ed=t.closest('.dg-edge-hit')||t.closest('.dg-edge');
+  if(ed){ dgSelEdge=ed.dataset.eid; dgSel=null; renderDiagram(); return; }
+  dgSel=null; dgSelEdge=null; if(dgConnect){ dgConnectFrom=null; } renderDiagram();
+}
+function dgMove(e){
+  if(!dgAct) return; const p=dgSvgPos(e);
+  if(dgAct.type==='move'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} s.x=Math.max(0,Math.round(dgAct.ox+(p.x-dgAct.sx))); s.y=Math.max(0,Math.round(dgAct.oy+(p.y-dgAct.sy))); dgAct.moved=true; renderDiagram(); }
+  else if(dgAct.type==='resize'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} const dx=p.x-dgAct.sx, dy=p.y-dgAct.sy; let x=dgAct.ox,y=dgAct.oy,w=dgAct.ow,ht=dgAct.oh;
+    if(dgAct.h===0){ x=dgAct.ox+dx; y=dgAct.oy+dy; w=dgAct.ow-dx; ht=dgAct.oh-dy; }
+    else if(dgAct.h===1){ y=dgAct.oy+dy; w=dgAct.ow+dx; ht=dgAct.oh-dy; }
+    else if(dgAct.h===2){ w=dgAct.ow+dx; ht=dgAct.oh+dy; }
+    else if(dgAct.h===3){ x=dgAct.ox+dx; w=dgAct.ow-dx; ht=dgAct.oh+dy; }
+    if(w<30){ if(dgAct.h===0||dgAct.h===3) x=dgAct.ox+dgAct.ow-30; w=30; }
+    if(ht<28){ if(dgAct.h===0||dgAct.h===1) y=dgAct.oy+dgAct.oh-28; ht=28; }
+    s.x=Math.round(x); s.y=Math.round(y); s.w=Math.round(w); s.h=Math.round(ht); renderDiagram(); }
+  else if(dgAct.type==='connect'){ dgAct.cur=p; renderDiagram(); }
+}
+function dgUp(e){
+  if(!dgAct) return;
+  if(dgAct.type==='connect'){
+    const from=dgAct.from; dgAct=null;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const g=el&&el.closest?el.closest('.dg-shape'):null;
+    if(g&&g.dataset.id&&g.dataset.id!==from) dgAddEdge(from, g.dataset.id);
+    else renderDiagram();
+    return;
+  }
+  const t=dgAct.type; dgAct=null; dgSave(); if(t==='move'||t==='resize') renderDiagram();
+}
+function dgKey(e){
+  if(S.mode!=='diagram') return;
+  const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea') return;
+  if(e.key==='Delete'||e.key==='Backspace'){ if(dgSel||dgSelEdge){ e.preventDefault(); dgDeleteSel(); } }
+}
+function dgDeleteSel(){
+  if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgSel=null; dgSave(); renderDiagram(); }
+  else if(dgSelEdge){ dgSnapshot(); dg.edges=dg.edges.filter(e=>e.id!==dgSelEdge); dgSelEdge=null; dgSave(); renderDiagram(); }
+}
+function dgEditSelText(){ if(dgSel) dgEditText(dgSel); else if(dgSelEdge){ const ed=dg.edges.find(e=>e.id===dgSelEdge); const v=prompt('نص السهم:',ed.label||''); if(v!==null){ dgSnapshot(); ed.label=v; dgSave(); renderDiagram(); } } else alert('اختر شكلاً أو سهماً أولاً.'); }
+function dgEditText(id){ const s=dgShape(id); const v=prompt('نص الشكل (اضغط Shift+Enter لسطر جديد غير مدعوم — استخدم | للفصل):', s.text||''); if(v!==null){ dgSnapshot(); s.text=v.replace(/\|/g,'\n'); dgSave(); renderDiagram(); } }
+function dgToggleConnect(){ dgSetConnect(!dgConnect); }
+function dgSetConnect(on){ dgConnect=on; dgConnectFrom=null; document.body.classList.toggle('dg-connect',on); const b=document.getElementById('dg-connect-btn'); if(b) b.classList.toggle('on',on); }
+function dgClear(){ if(!dg.shapes.length&&!dg.edges.length) return; if(!confirm('مسح كل المخطط؟')) return; dgSnapshot(); dg={shapes:[],edges:[]}; dgSel=dgSelEdge=null; dgSave(); renderDiagram(); }
+
+function dgExportSvg(){
+  const svg=document.getElementById('dg-svg').cloneNode(true);
+  svg.querySelectorAll('.dg-handle,.dg-port,.dg-selbox,.dg-edge-hit').forEach(n=>n.remove());
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+svg.outerHTML],{type:'image/svg+xml'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='diagram-'+new Date().toISOString().slice(0,10)+'.svg'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function dgExportPng(){
+  const src=document.getElementById('dg-svg').cloneNode(true);
+  src.querySelectorAll('.dg-handle,.dg-port,.dg-selbox,.dg-edge-hit').forEach(n=>n.remove());
+  src.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const W=+src.getAttribute('width'), H=+src.getAttribute('height');
+  const data=new XMLSerializer().serializeToString(src);
+  const img=new Image();
+  img.onload=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.drawImage(img,0,0);
+    const a=document.createElement('a'); a.download='diagram-'+new Date().toISOString().slice(0,10)+'.png'; a.href=c.toDataURL('image/png'); a.click(); };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(data);
+}
+function dgInit(){
+  if(dgInited) return; dgInited=true;
+  dgBuildPalette();
+  const svg=document.getElementById('dg-svg');
+  svg.addEventListener('pointerdown', dgDown);
+  svg.addEventListener('dblclick', e=>{ const g=e.target.closest('.dg-shape'); if(g) dgEditText(g.dataset.id); });
+  window.addEventListener('pointermove', dgMove);
+  window.addEventListener('pointerup', dgUp);
+  window.addEventListener('keydown', dgKey);
+}
+
 /* ═══ تهيئة ═══ */
 (function init(){
   const sw=document.getElementById('swatches');
   SWATCHES.forEach((c,i)=>{ const b=document.createElement('div'); b.className='swatch'+(i===0?' sel':''); b.style.background=c; b.dataset.color=c; b.onclick=()=>pickColor(c); sw.appendChild(b); });
   clearCtx();
+  dgInit();
   setMode(LS.get('mode','draw'));
 })();
 </script>
