@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v11 · 2026-07-19</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v12 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -193,6 +193,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <div class="toolbar">
       <div class="dg-palette" id="dg-palette"></div>
       <label class="btn btn-outline" style="cursor:pointer" title="إضافة صورة">🖼️ صورة<input type="file" accept="image/*" onchange="dgAddImage(this)" style="display:none"></label>
+      <button class="btn btn-outline" onclick="dgRemoveBg()" title="إزالة خلفية الصورة المحددة">✂️ إزالة خلفية</button>
       <div class="sep"></div>
       <span class="tool-lbl">تعبئة</span>
       <div class="swatches" id="dg-fills"></div>
@@ -639,12 +640,24 @@ function dgMove(e){
 function dgUp(e){
   if(!dgAct) return;
   if(dgAct.type==='connect'){
-    const from=dgAct.from; dgAct=null;
+    const from=dgAct.from; const pos=dgSvgPos(e); dgAct=null;
     const el=document.elementFromPoint(e.clientX,e.clientY);
     const g=el&&el.closest?el.closest('.dg-shape'):null;
-    if(g&&g.dataset.id&&g.dataset.id!==from) dgAddEdge(from, g.dataset.id);
-    else renderDiagram();
-    return;
+    if(g&&g.dataset.id&&g.dataset.id!==from){ dgAddEdge(from, g.dataset.id); return; }
+    if(g){ renderDiagram(); return; } // أُفلت فوق نفس الشكل → تجاهل (لا مستطيل عرضي)
+    // أُفلت في مكان فارغ داخل اللوحة → أنشئ مستطيلاً جديداً مربوطاً بالخط تلقائياً
+    const src=dgShape(from);
+    const dragged = !src || Math.hypot(pos.x-(src.x+src.w/2), pos.y-(src.y+src.h/2))>40;
+    if(pos.x>=0 && pos.x<=1600 && pos.y>=0 && pos.y<=1000 && dragged){
+      dgSnapshot();
+      const w=130,h=58;
+      const nx=Math.round(Math.max(0,Math.min(1600-w,pos.x-w/2))), ny=Math.round(Math.max(0,Math.min(1000-h,pos.y-h/2)));
+      const id=uid();
+      dg.shapes.push({ id, type:'rect', x:nx, y:ny, w, h, text:'', fill:dgFill, stroke:dgStroke });
+      dg.edges.push({ id:uid(), from, to:id, label:'', style:dgEdgeDefault.style, arrows:dgEdgeDefault.arrows, dash:dgEdgeDefault.dash, color:dgEdgeDefault.color, width:dgEdgeDefault.width });
+      dgSel=id; dgSelEdge=null; dgSave();
+    }
+    renderDiagram(); return;
   }
   const t=dgAct.type; dgAct=null; dgSave(); if(t==='move'||t==='resize') renderDiagram();
 }
@@ -749,9 +762,12 @@ function dgAddImage(inp){
   if(!/^image\//.test(f.type||'')){ alert('اختر ملف صورة.'); inp.value=''; return; }
   const rd=new FileReader();
   rd.onload=()=>{ const im=new Image(); im.onload=()=>{
-    let w=im.naturalWidth||220, h=im.naturalHeight||160; const max=260;
-    if(w>max){ h=Math.round(h*max/w); w=max; } if(h>max){ w=Math.round(w*max/h); h=max; }
-    const sc=2, cv=document.createElement('canvas'); cv.width=w*sc; cv.height=h*sc; cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+    const nw=im.naturalWidth||220, nh=im.naturalHeight||160;
+    // حجم العرض الابتدائي
+    let w=nw, h=nh; const dmax=300; if(w>dmax){ h=Math.round(h*dmax/w); w=dmax; } if(h>dmax){ w=Math.round(w*dmax/h); h=dmax; }
+    // تخزين بدقة عالية (حتى 1600px) للحفاظ على جودة الصورة عند التكبير والتصدير
+    let sw=nw, sh=nh; const smax=1600; if(sw>smax){ sh=Math.round(sh*smax/sw); sw=smax; } if(sh>smax){ sw=Math.round(sw*smax/sh); sh=smax; }
+    const cv=document.createElement('canvas'); cv.width=sw; cv.height=sh; const cx=cv.getContext('2d'); cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high'; cx.drawImage(im,0,0,sw,sh);
     let src; try{ src=cv.toDataURL('image/png'); }catch(_){ src=rd.result; }
     const wrap=document.getElementById('dg-wrap');
     const x=Math.round((wrap.scrollLeft||0)/dgScale+60), y=Math.round((wrap.scrollTop||0)/dgScale+50);
@@ -760,6 +776,30 @@ function dgAddImage(inp){
   }; im.onerror=()=>alert('تعذّر تحميل الصورة.'); im.src=rd.result; };
   rd.onerror=()=>alert('تعذّر قراءة الملف.');
   rd.readAsDataURL(f); inp.value='';
+}
+// ── إزالة خلفية الصورة المحددة (مفتاح لوني: يجعل لون الخلفية شفافاً)
+function dgRemoveBg(){
+  if(!dgSel){ alert('حدّد صورة أولاً بالنقر عليها.'); return; }
+  const s=dgShape(dgSel); if(!s||s.type!=='image'){ alert('هذه الميزة للصور فقط — حدّد صورة.'); return; }
+  const im=new Image();
+  im.onload=()=>{
+    const c=document.createElement('canvas'); c.width=im.naturalWidth||s.w; c.height=im.naturalHeight||s.h;
+    const x=c.getContext('2d'); x.drawImage(im,0,0,c.width,c.height);
+    let id; try{ id=x.getImageData(0,0,c.width,c.height); }catch(_){ alert('تعذّرت معالجة الصورة.'); return; }
+    const d=id.data, W=c.width, H=c.height;
+    // لون الخلفية = متوسط بكسلات الأركان الأربعة
+    const cor=[0,(W-1),(H-1)*W,(H*W-1)].map(i=>i*4);
+    let br=0,bg=0,bb=0; cor.forEach(i=>{ br+=d[i]; bg+=d[i+1]; bb+=d[i+2]; }); br/=4; bg/=4; bb/=4;
+    const tol=62, feather=tol*0.6;
+    for(let i=0;i<d.length;i+=4){
+      const dist=Math.sqrt((d[i]-br)**2+(d[i+1]-bg)**2+(d[i+2]-bb)**2);
+      if(dist<tol) d[i+3]=0;
+      else if(dist<tol+feather) d[i+3]=Math.round(d[i+3]*(dist-tol)/feather);
+    }
+    x.putImageData(id,0,0);
+    dgSnapshot(); s.src=c.toDataURL('image/png'); dgSave(); renderDiagram();
+  };
+  im.onerror=()=>alert('تعذّر تحميل الصورة.'); im.src=s.src;
 }
 // ── خلفية البورد: لون + نمط (نقاط/مربعات/بدون)
 function dgLoadBg(){ try{ const d=JSON.parse(LS.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
