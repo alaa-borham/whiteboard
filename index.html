@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v14 · 2026-07-19</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v15 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -221,7 +221,6 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
         <button class="btn btn-outline dg-bgpat" data-pat="dots" onclick="dgSetBgPattern('dots')">⋯ نقاط</button>
         <button class="btn btn-outline dg-bgpat" data-pat="grid" onclick="dgSetBgPattern('grid')">▦ مربعات</button>
         <button class="btn btn-outline dg-bgpat" data-pat="none" onclick="dgSetBgPattern('none')">▢ سادة</button>
-        <span class="tool-lbl" style="opacity:.75">— حدّد شكلاً أو سهماً لإظهار أدواته • Ctrl+نقر لتحديد متعدد</span>
       </div>
       <!-- (٢) شكل محدَّد → ألوانه -->
       <div id="dg-ctx-shape" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
@@ -809,11 +808,31 @@ function dgRemoveBg(){
     // لون الخلفية = متوسط بكسلات الأركان الأربعة
     const cor=[0,(W-1),(H-1)*W,(H*W-1)].map(i=>i*4);
     let br=0,bg=0,bb=0; cor.forEach(i=>{ br+=d[i]; bg+=d[i+1]; bb+=d[i+2]; }); br/=4; bg/=4; bb/=4;
-    const tol=62, feather=tol*0.6;
-    for(let i=0;i<d.length;i+=4){
-      const dist=Math.sqrt((d[i]-br)**2+(d[i+1]-bg)**2+(d[i+2]-bb)**2);
-      if(dist<tol) d[i+3]=0;
-      else if(dist<tol+feather) d[i+3]=Math.round(d[i+3]*(dist-tol)/feather);
+    // تعبئة فيضية من الحواف: تُزال الخلفية الخارجية المتصلة بالأطراف فقط،
+    // ويبقى داخل التصميم (ولو بنفس اللون) سليماً — فيقبل التعبئة بالألوان
+    const tol=62, tol2=tol*tol;
+    const near=i=>{ const dr=d[i]-br, dgn=d[i+1]-bg, db=d[i+2]-bb; return dr*dr+dgn*dgn+db*db < tol2; };
+    const visited=new Uint8Array(W*H); const stack=[];
+    for(let xx=0; xx<W; xx++){ stack.push(xx, (H-1)*W+xx); }
+    for(let yy=0; yy<H; yy++){ stack.push(yy*W, yy*W+W-1); }
+    while(stack.length){
+      const pI=stack.pop();
+      if(pI<0||pI>=W*H||visited[pI]) continue;
+      visited[pI]=1;
+      if(!near(pI*4)) continue;
+      d[pI*4+3]=0;
+      const px=pI%W;
+      if(px>0) stack.push(pI-1);
+      if(px<W-1) stack.push(pI+1);
+      if(pI>=W) stack.push(pI-W);
+      if(pI<W*(H-1)) stack.push(pI+W);
+    }
+    // تنعيم الحافة: بكسل معتم ملاصق لبكسل مُزال يُخفَّف جزئياً
+    for(let pI=0; pI<W*H; pI++){
+      if(d[pI*4+3]===0) continue;
+      const px=pI%W;
+      const adj=(px>0&&d[(pI-1)*4+3]===0)||(px<W-1&&d[(pI+1)*4+3]===0)||(pI>=W&&d[(pI-W)*4+3]===0)||(pI<W*(H-1)&&d[(pI+W)*4+3]===0);
+      if(adj&&near(pI*4)) d[pI*4+3]=Math.round(d[pI*4+3]*0.45);
     }
     x.putImageData(id,0,0);
     const out=c.toDataURL('image/png');
