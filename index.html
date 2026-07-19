@@ -7,10 +7,13 @@
 <title>الوايت بورد</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%96%8A%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
-:root{ --g1:#7cb342; --g2:#558b2f; --dark1:#0b1f13; --dark2:#081409; --line:#e6ece0; }
+:root{ --g1:#7cb342; --g2:#558b2f; --dark1:#0b1f13; --dark2:#081409; --line:#e6ece0;
+  --page:#f4f7f0; --pane:#ffffff; --ink:#2a3320; --muted:#777777; --surface2:#dfe6d6; --btnbg:#ffffff; --btnink:#4a5a3a; --tbline:#eef2ea; }
+body.theme-dark{ --line:#2f3d33; --page:#0e1411; --pane:#1b241e; --ink:#e6ede2; --muted:#9fb098; --surface2:#33413a; --btnbg:#222c26; --btnink:#cfe0c4; --tbline:#2b3730; }
+body.theme-gray{ --line:#565e58; --page:#363b38; --pane:#454b47; --ink:#e7ece8; --muted:#aab4ad; --surface2:#565e58; --btnbg:#454b47; --btnink:#dfe5e0; --tbline:#525a54; }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:'Segoe UI',Tahoma,system-ui,sans-serif;background:#f4f7f0;color:#2a3320;display:flex;flex-direction:column;min-height:100vh}
+body{font-family:'Segoe UI',Tahoma,system-ui,sans-serif;background:var(--page);color:var(--ink);display:flex;flex-direction:column;min-height:100vh;transition:background .2s,color .2s}
 a{color:inherit}
 /* ── الترويسة */
 header{background:linear-gradient(90deg,var(--dark1),var(--dark2));color:#fff;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.15);position:sticky;top:0;z-index:20}
@@ -19,13 +22,17 @@ header .brand small{display:block;font-weight:500;font-size:.68rem;opacity:.7;ma
 header .spacer{flex:1}
 header a.home{color:rgba(255,255,255,.85);text-decoration:none;font-size:.85rem;font-weight:600;background:rgba(255,255,255,.1);padding:6px 12px;border-radius:9px}
 header a.home:hover{background:rgba(255,255,255,.2)}
+.thm{display:flex;gap:3px;background:rgba(255,255,255,.1);border-radius:9px;padding:3px}
+.thm button{background:none;border:none;color:rgba(255,255,255,.72);cursor:pointer;font-size:.8rem;padding:4px 9px;border-radius:7px;font-family:inherit;font-weight:600}
+.thm button:hover{color:#fff}
+.thm button.on{background:rgba(255,255,255,.24);color:#fff}
 /* ── التبويبات */
 .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 0;max-width:1500px;margin:0 auto;width:100%}
-.tab{background:#fff;border:1.5px solid #dfe6d6;color:#4a5a3a;border-radius:11px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .15s}
+.tab{background:var(--btnbg);border:1.5px solid var(--surface2);color:var(--btnink);border-radius:11px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .15s}
 .tab:hover{border-color:var(--g1)}
 .tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2);box-shadow:0 4px 12px rgba(124,179,66,.3)}
 main{max-width:1500px;margin:14px auto 40px;padding:0 16px;width:100%;flex:1}
-.pane{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.pane{background:var(--pane);border:1px solid var(--line);border-radius:14px;padding:14px}
 /* ── الأزرار */
 .btn{border:none;border-radius:9px;padding:7px 13px;font-family:inherit;font-weight:700;font-size:.84rem;cursor:pointer;transition:all .15s}
 .btn:hover{filter:brightness(1.05)}
@@ -33,14 +40,14 @@ main{max-width:1500px;margin:14px auto 40px;padding:0 16px;width:100%;flex:1}
 .btn-info{background:#1565c0;color:#fff}
 .btn-danger{background:#e53935;color:#fff}
 .btn-warning{background:#f9a825;color:#3a2c00}
-.btn-outline{background:#fff;border:1.5px solid #d3dcc8;color:#4a5a3a}
+.btn-outline{background:var(--btnbg);border:1.5px solid var(--surface2);color:var(--btnink)}
 .btn-outline:hover{border-color:var(--g1)}
 /* ── شريط الأدوات */
-.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ea}
-.tool-lbl{font-size:.8rem;color:#777;font-weight:600}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--tbline)}
+.tool-lbl{font-size:.8rem;color:var(--muted);font-weight:600}
 .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
 .swatches{display:flex;gap:6px}
-.swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1.5px #ccc;transition:transform .12s}
+.swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid var(--pane);box-shadow:0 0 0 1.5px #ccc;transition:transform .12s}
 .swatch:hover{transform:scale(1.12)}
 .swatch.sel{box-shadow:0 0 0 2.5px var(--g2);transform:scale(1.12)}
 input[type=color]{width:34px;height:30px;border:none;background:none;cursor:pointer;padding:0}
@@ -119,7 +126,12 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
 <header>
   <div class="brand">🖊️ الوايت بورد <small>لوحة رسم ومهام وملاحظات</small></div>
   <div class="spacer"></div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v9 · 2026-07-19</span>
+  <div class="thm" id="thm-group">
+    <button data-t="light" onclick="setTheme('light')" title="فاتح">☀️ فاتح</button>
+    <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
+    <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
+  </div>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v10 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -861,8 +873,17 @@ function dgInit(){
   SWATCHES.forEach((c,i)=>{ const b=document.createElement('div'); b.className='swatch'+(i===0?' sel':''); b.style.background=c; b.dataset.color=c; b.onclick=()=>pickColor(c); sw.appendChild(b); });
   clearCtx();
   dgInit();
+  setTheme(LS.get('theme','light'));
   setMode(LS.get('mode','draw'));
 })();
+function setTheme(t){
+  document.body.classList.remove('theme-dark','theme-gray');
+  if(t==='dark') document.body.classList.add('theme-dark');
+  else if(t==='gray') document.body.classList.add('theme-gray');
+  else t='light';
+  LS.set('theme', t);
+  document.querySelectorAll('.thm button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+}
 // عامل الخدمة: يضمن تحميل أحدث نسخة تلقائياً عند الاتصال
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 </script>
