@@ -119,6 +119,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
 <header>
   <div class="brand">🖊️ الوايت بورد <small>لوحة رسم ومهام وملاحظات</small></div>
   <div class="spacer"></div>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v8 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -862,6 +863,8 @@ function dgInit(){
   dgInit();
   setMode(LS.get('mode','draw'));
 })();
+// عامل الخدمة: يضمن تحميل أحدث نسخة تلقائياً عند الاتصال
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 </script>
 </body>
 </html>
