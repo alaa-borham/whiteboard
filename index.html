@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v12 · 2026-07-19</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v13 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -468,7 +468,7 @@ function dgBuildPalette(){
   if(ec) ec.innerHTML=DG_EDGECOLORS.map((c,i)=>`<div class="swatch${i===0?' sel':''}" data-ec="${c}" style="background:${c}" onclick="dgPickEdgeColor('${c}')"></div>`).join('');
 }
 function dgPickFill(c){ dgFill=c; document.querySelectorAll('#dg-fills .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.f===c));
-  if(dgSel){ dgSnapshot(); dgShape(dgSel).fill=c; dgSave(); renderDiagram(); } }
+  if(dgSel){ const s=dgShape(dgSel); if(s&&s.type==='image'){ dgTintImage(c); return; } dgSnapshot(); s.fill=c; dgSave(); renderDiagram(); } }
 function dgPickStroke(c){ dgStroke=c; document.querySelectorAll('#dg-strokes .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.s===c));
   if(dgSel){ dgSnapshot(); dgShape(dgSel).stroke=c; dgSave(); renderDiagram(); } }
 function dgPickTextColor(c){ dgTextColor=c; document.querySelectorAll('#dg-textcolors .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.tc===c));
@@ -797,9 +797,33 @@ function dgRemoveBg(){
       else if(dist<tol+feather) d[i+3]=Math.round(d[i+3]*(dist-tol)/feather);
     }
     x.putImageData(id,0,0);
-    dgSnapshot(); s.src=c.toDataURL('image/png'); dgSave(); renderDiagram();
+    const out=c.toDataURL('image/png');
+    dgSnapshot(); s.imgBase=out;
+    if(s.tint) dgMultiplyTint(out, s.tint, o2=>{ s.src=o2; dgSave(); renderDiagram(); });
+    else { s.src=out; dgSave(); renderDiagram(); }
   };
-  im.onerror=()=>alert('تعذّر تحميل الصورة.'); im.src=s.src;
+  im.onerror=()=>alert('تعذّر تحميل الصورة.'); im.src=s.imgBase||s.src;
+}
+// ── تلوين الصورة (tint) بمزج اللون مع البكسلات المعتمة فقط (multiply)
+function dgMultiplyTint(baseSrc, color, cb){
+  const im=new Image();
+  im.onload=()=>{
+    const c=document.createElement('canvas'); c.width=im.naturalWidth||1; c.height=im.naturalHeight||1;
+    const x=c.getContext('2d'); x.drawImage(im,0,0);
+    x.globalCompositeOperation='multiply'; x.fillStyle=color; x.fillRect(0,0,c.width,c.height);
+    x.globalCompositeOperation='destination-in'; x.drawImage(im,0,0); // احترام شفافية الأصل
+    x.globalCompositeOperation='source-over';
+    try{ cb(c.toDataURL('image/png')); }catch(_){ }
+  };
+  im.onerror=()=>alert('تعذّر معالجة الصورة.'); im.src=baseSrc;
+}
+function dgTintImage(color){
+  const s=dgShape(dgSel); if(!s||s.type!=='image') return;
+  if(!s.imgBase) s.imgBase=s.src;
+  dgSnapshot();
+  if(!color || color.toLowerCase()==='#ffffff'){ s.tint=undefined; s.src=s.imgBase; s.fill='#ffffff'; dgSave(); renderDiagram(); return; }
+  s.tint=color; s.fill=color;
+  dgMultiplyTint(s.imgBase, color, out=>{ s.src=out; dgSave(); renderDiagram(); });
 }
 // ── خلفية البورد: لون + نمط (نقاط/مربعات/بدون)
 function dgLoadBg(){ try{ const d=JSON.parse(LS.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
