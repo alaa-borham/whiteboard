@@ -508,7 +508,8 @@ function dgHandles(s){
   const w=s.w,h=s.h,hs=9, C=[[0,0],[w,0],[w,h],[0,h]];
   let r=`<rect class="dg-selbox" x="-3" y="-3" width="${w+6}" height="${h+6}"/>`;
   r+=C.map((c,i)=>`<rect class="dg-handle" data-h="${i}" x="${c[0]-hs/2}" y="${c[1]-hs/2}" width="${hs}" height="${hs}"/>`).join('');
-  r+=`<circle class="dg-port" data-port="1" cx="${w}" cy="${h/2}" r="6"/>`;
+  const P=[[w/2,0],[w,h/2],[w/2,h],[0,h/2]]; // أعلى، يمين، أسفل، يسار
+  r+=P.map(pt=>`<circle class="dg-port" data-port="1" cx="${pt[0]}" cy="${pt[1]}" r="5.5"/>`).join('');
   return r;
 }
 function renderDiagram(){
@@ -528,7 +529,7 @@ function renderDiagram(){
   dg.shapes.forEach(s=>{
     h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+(dgSel===s.id?dgHandles(s):'')+`</g>`;
   });
-  if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a) h+=`<line x1="${a.x+a.w}" y1="${a.y+a.h/2}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; }
+  if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a){ const fx=dgAct.fromX!=null?dgAct.fromX:a.x+a.w, fy=dgAct.fromY!=null?dgAct.fromY:a.y+a.h/2; h+=`<line x1="${fx}" y1="${fy}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; } }
   svg.innerHTML=h;
   dgSyncControls();
 }
@@ -542,7 +543,7 @@ function dgSvgPos(e){ const r=document.getElementById('dg-svg').getBoundingClien
 function dgDown(e){
   const t=e.target, p=dgSvgPos(e);
   if(t.classList.contains('dg-handle')){ e.preventDefault(); const s=dgShape(dgSel); dgAct={type:'resize',id:dgSel,h:+t.dataset.h,ox:s.x,oy:s.y,ow:s.w,oh:s.h,sx:p.x,sy:p.y,snapped:false}; return; }
-  if(t.classList.contains('dg-port')){ e.preventDefault(); dgAct={type:'connect',from:dgSel,cur:p}; renderDiagram(); return; }
+  if(t.classList.contains('dg-port')){ e.preventDefault(); const s=dgShape(dgSel); const fx=(+t.getAttribute('cx'))+(s?s.x:0), fy=(+t.getAttribute('cy'))+(s?s.y:0); dgAct={type:'connect',from:dgSel,cur:p,fromX:fx,fromY:fy}; renderDiagram(); return; }
   const g=t.closest('.dg-shape');
   if(g){ const id=g.dataset.id;
     if(dgConnect){ if(!dgConnectFrom){ dgConnectFrom=id; dgSel=id; dgSelEdge=null; renderDiagram(); } else { dgAddEdge(dgConnectFrom,id); dgConnectFrom=null; dgSetConnect(false); } return; }
