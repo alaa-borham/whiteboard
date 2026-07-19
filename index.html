@@ -405,9 +405,9 @@ const DG_TYPES = [
   { t:'arrow',         name:'سهم/مرحلة' },
 ];
 const DG_FILLS   = ['#ffffff','#e3f2fd','#e8f5e9','#fff8e1','#fce4ec','#ede7f6','#eceff1','#111111'];
-const DG_STROKES = ['#333333','#1565c0','#2e7d32','#e65100','#c2185b','#6a1b9a','#00838f','#e53935'];
+const DG_STROKES = ['#333333','#ffffff','#1565c0','#2e7d32','#e65100','#c2185b','#6a1b9a','#00838f','#e53935'];
 const DG_TEXTCOLORS = ['#222222','#ffffff','#1565c0','#2e7d32','#c62828','#e65100','#6a1b9a','#00838f'];
-const DG_EDGECOLORS = ['#555555','#111111','#1565c0','#2e7d32','#c62828','#e65100','#6a1b9a','#00838f'];
+const DG_EDGECOLORS = ['#555555','#ffffff','#111111','#1565c0','#2e7d32','#c62828','#e65100','#6a1b9a','#00838f'];
 const DG_WIDTHS = [1,2,3,4,6];
 let dg = { shapes:[], edges:[] };
 let dgSel=null, dgSelEdge=null, dgConnect=false, dgConnectFrom=null, dgAct=null, dgInited=false, dgAddIdx=0;
@@ -555,13 +555,19 @@ function dgHandles(s){
   r+=P.map(pt=>`<circle class="dg-port" data-port="1" cx="${pt[0]}" cy="${pt[1]}" r="5.5"/>`).join('');
   return r;
 }
+function dgMk(c){ return 'dg-ar-'+String(c||'#555').replace(/[^a-zA-Z0-9]/g,''); }
 function renderDiagram(){
   const svg=document.getElementById('dg-svg'); if(!svg) return;
-  let h=`<defs><marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>`;
+  // ماركر رأس سهم بلون صريح لكل لون مستخدم (بدل context-stroke غير الموثوق في التصدير)
+  const cols=[...new Set(dg.edges.map(e=>e.color||'#555'))];
+  let defs='<defs>';
+  cols.forEach(c=>{ defs+=`<marker id="${dgMk(c)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`; });
+  defs+='</defs>';
+  let h=defs;
   dg.edges.forEach(ed=>{ const g=dgEdgeGeom(ed); if(!g) return;
-    const ar=ed.arrows||'end', sel=dgSelEdge===ed.id, col=ed.color||'#555', wdt=ed.width||2;
-    const me=(ar==='end'||ar==='both')?' marker-end="url(#dg-arrow)"':'';
-    const ms=(ar==='both')?' marker-start="url(#dg-arrow)"':'';
+    const ar=ed.arrows||'end', sel=dgSelEdge===ed.id, col=ed.color||'#555', wdt=ed.width||2, mk=dgMk(col);
+    const me=(ar==='end'||ar==='both')?` marker-end="url(#${mk})"`:'';
+    const ms=(ar==='both')?` marker-start="url(#${mk})"`:'';
     const dash=ed.dash?' stroke-dasharray="7 5"':'';
     if(sel) h+=`<path d="${g.d}" fill="none" stroke="#7cb342" stroke-width="${wdt+3}" stroke-opacity="0.16" style="pointer-events:none"/>`;
     h+=`<path class="dg-edge-hit" data-eid="${ed.id}" d="${g.d}" fill="none"/>`;
@@ -603,7 +609,7 @@ function dgDown(e){
   if(ed){ const eid=ed.dataset.eid; const now=Date.now();
     if(dgLastClick&&dgLastClick.id===eid&&now-dgLastClick.t<350){ dgLastClick=null; dgSelEdge=eid; dgSel=null; dgEditEdgeLabel(eid); return; }
     dgLastClick={id:eid,t:now}; dgSelEdge=eid; dgSel=null; renderDiagram(); return; }
-  dgLastClick=null; dgSel=null; dgSelEdge=null; if(dgConnect){ dgConnectFrom=null; } renderDiagram();
+  dgLastClick=null; dgSel=null; dgSelEdge=null; dgPrintSel.clear(); if(dgConnect){ dgConnectFrom=null; } renderDiagram();
 }
 function dgMove(e){
   if(!dgAct) return; const p=dgSvgPos(e);
