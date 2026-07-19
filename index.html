@@ -93,6 +93,26 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
 .dg-selbox{fill:none;stroke:var(--g2);stroke-width:1.3;stroke-dasharray:5 3;pointer-events:none}
 body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
 #dg-connect-btn.on{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2)}
+.dg-bgpat.on{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2)}
+/* ── معاينة الطباعة */
+#dg-preview{position:fixed;inset:0;background:rgba(15,20,15,.62);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+#dg-preview .dgpv-box{background:#fff;border-radius:14px;max-width:min(94vw,1100px);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+#dg-preview .dgpv-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee;background:#f6f9f2}
+#dg-preview .dgpv-head b{color:#2e7d32;font-size:1rem}
+#dg-preview .dgpv-head .tag{font-size:.78rem;color:#666;background:#e3efd3;border-radius:20px;padding:2px 10px}
+#dg-preview .dgpv-head .x{margin-inline-start:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#888}
+#dg-preview .dgpv-body{overflow:auto;padding:16px;background:#eef2ea;text-align:center;flex:1}
+#dg-preview .dgpv-body img{max-width:100%;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px}
+#dg-preview .dgpv-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid #eee;flex-wrap:wrap;justify-content:flex-end}
+.dg-print-sel{outline:none}
+@media print{
+  body > *:not(#dg-preview){display:none !important;}
+  #dg-preview{position:static;background:#fff;padding:0;display:block}
+  #dg-preview .dgpv-box{max-width:none;max-height:none;box-shadow:none;border-radius:0}
+  #dg-preview .dgpv-head,#dg-preview .dgpv-foot{display:none !important;}
+  #dg-preview .dgpv-body{overflow:visible;background:#fff;padding:0}
+  #dg-preview .dgpv-body img{box-shadow:none;max-width:100%}
+}
 </style>
 </head>
 <body>
@@ -173,6 +193,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
       <button class="btn btn-outline" onclick="dgUndoDg()">↶ تراجع</button>
       <button class="btn btn-outline" onclick="dgDeleteSel()">🗑 حذف</button>
       <div class="sep"></div>
+      <button class="btn btn-success" onclick="dgPreviewPrint()">👁️ معاينة/طباعة</button>
       <button class="btn btn-info" onclick="dgExportPng()">🖼️ PNG</button>
       <button class="btn btn-info" onclick="dgExportPdf()">📄 PDF</button>
       <button class="btn btn-info" onclick="dgExportSvg()">⬇️ SVG</button>
@@ -198,8 +219,14 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
       <span class="tool-lbl" id="dg-zoom-lbl" style="min-width:38px;text-align:center">100%</span>
       <button class="btn btn-outline" onclick="dgZoom(1.25)">🔍+</button>
       <button class="btn btn-outline" onclick="dgZoomReset()">⤢ 100%</button>
+      <div class="sep"></div>
+      <span class="tool-lbl">الخلفية:</span>
+      <div class="swatches" id="dg-bgcolors"></div>
+      <button class="btn btn-outline dg-bgpat" data-pat="dots" onclick="dgSetBgPattern('dots')">⋯ نقاط</button>
+      <button class="btn btn-outline dg-bgpat" data-pat="grid" onclick="dgSetBgPattern('grid')">▦ مربعات</button>
+      <button class="btn btn-outline dg-bgpat" data-pat="none" onclick="dgSetBgPattern('none')">▢ سادة</button>
     </div>
-    <div class="dg-hint">أضف شكلاً من الأيقونات، اسحبه لتحريكه، اسحب المقابض الزرقاء لتغيير الحجم، انقر مزدوجاً للكتابة بداخله. للربط: اسحب من النقطة الخضراء على يمين الشكل إلى شكل آخر، أو زر «🔗 توصيل» ثم انقر شكلين. انقر سهماً لتحديده ثم غيّر نوعه من «السهم المحدد». اختصارات: Ctrl+C/V نسخ/لصق، Delete حذف.</div>
+    <div class="dg-hint">أضف شكلاً من الأيقونات، اسحبه لتحريكه، اسحب المقابض الزرقاء لتغيير الحجم، انقر مزدوجاً للكتابة بداخله. للربط: اسحب من إحدى النقاط الخضراء (على كل ضلع) إلى شكل آخر. <b>Ctrl+نقر</b> لتحديد عدة أشكال للطباعة، ثم «👁️ معاينة/طباعة». اختصارات: Ctrl+C/V نسخ/لصق، Delete حذف.</div>
     <div id="dg-wrap"><svg id="dg-svg" width="1600" height="1000" viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
   </section>
 </main>
@@ -224,7 +251,7 @@ function setMode(m){
   if (m==='draw')    loadCanvas();
   if (m==='tasks')   renderBoard();
   if (m==='notes')   renderNotes();
-  if (m==='diagram'){ dg=dgLoad(); dgSel=dgSelEdge=null; dgSetConnect(false); renderDiagram(); }
+  if (m==='diagram'){ dg=dgLoad(); dgSel=dgSelEdge=null; dgSetConnect(false); dgApplyBg(); renderDiagram(); }
 }
 
 /* ═══ الرسم الحر ═══ */
@@ -390,6 +417,9 @@ let dgClipboard=null, dgScale=1, dgLastClick=null;
 const DG_STYLES=['straight','curved','ortho'], DG_ARROWS=['end','both','none'];
 let dgEdgeDefault={ style:'straight', arrows:'end', dash:false, color:'#555555', width:2 };
 let dgTextColor='#222222';
+let dgPrintSel=new Set();
+let dgBg={ color:'#ffffff', pattern:'dots' };
+const DG_BGCOLORS=['#ffffff','#f6f9f2','#eef4ff','#fff8e1','#fce4ec','#0b1f13','#111111','#1a2733'];
 
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function dgLoad(){ try{ const d=JSON.parse(LS.get('diagram','')); if(d&&d.shapes) return d; }catch(_){} return { shapes:[], edges:[] }; }
@@ -540,7 +570,8 @@ function renderDiagram(){
     if(sel&&g.p1&&g.p2){ h+=`<circle cx="${g.p1.x}" cy="${g.p1.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/><circle cx="${g.p2.x}" cy="${g.p2.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/>`; }
   });
   dg.shapes.forEach(s=>{
-    h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+(dgSel===s.id?dgHandles(s):'')+`</g>`;
+    const pmark=dgPrintSel.has(s.id)?`<rect fill="none" stroke="#1565c0" stroke-width="2.5" stroke-dasharray="6 3" x="-4" y="-4" width="${s.w+8}" height="${s.h+8}" style="pointer-events:none"/>`:'';
+    h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+pmark+(dgSel===s.id?dgHandles(s):'')+`</g>`;
   });
   if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a){ const fx=dgAct.fromX!=null?dgAct.fromX:a.x+a.w, fy=dgAct.fromY!=null?dgAct.fromY:a.y+a.h/2; h+=`<line x1="${fx}" y1="${fy}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; } }
   svg.innerHTML=h;
@@ -559,6 +590,7 @@ function dgDown(e){
   if(t.classList.contains('dg-port')){ e.preventDefault(); const s=dgShape(dgSel); const fx=(+t.getAttribute('cx'))+(s?s.x:0), fy=(+t.getAttribute('cy'))+(s?s.y:0); dgAct={type:'connect',from:dgSel,cur:p,fromX:fx,fromY:fy}; renderDiagram(); return; }
   const g=t.closest('.dg-shape');
   if(g){ const id=g.dataset.id;
+    if(e.ctrlKey||e.metaKey){ e.preventDefault(); if(dgPrintSel.has(id)) dgPrintSel.delete(id); else dgPrintSel.add(id); renderDiagram(); return; }
     if(dgConnect){ if(!dgConnectFrom){ dgConnectFrom=id; dgSel=id; dgSelEdge=null; renderDiagram(); } else { dgAddEdge(dgConnectFrom,id); dgConnectFrom=null; dgSetConnect(false); } return; }
     e.preventDefault();
     const now=Date.now();
@@ -608,7 +640,7 @@ function dgKey(e){
   else if(dgSel && (e.key==='Enter'||e.key==='F2')){ e.preventDefault(); dgEditText(dgSel); }
 }
 function dgDeleteSel(){
-  if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgSel=null; dgSave(); renderDiagram(); }
+  if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgPrintSel.delete(dgSel); dgSel=null; dgSave(); renderDiagram(); }
   else if(dgSelEdge){ dgSnapshot(); dg.edges=dg.edges.filter(e=>e.id!==dgSelEdge); dgSelEdge=null; dgSave(); renderDiagram(); }
 }
 function dgEditSelText(){ if(dgSel) dgEditText(dgSel); else if(dgSelEdge) dgEditEdgeLabel(dgSelEdge); else alert('اختر شكلاً أو سهماً أولاً.'); }
@@ -646,7 +678,7 @@ function dgEditEdgeLabel(id){
 }
 function dgToggleConnect(){ dgSetConnect(!dgConnect); }
 function dgSetConnect(on){ dgConnect=on; dgConnectFrom=null; document.body.classList.toggle('dg-connect',on); const b=document.getElementById('dg-connect-btn'); if(b) b.classList.toggle('on',on); }
-function dgClear(){ if(!dg.shapes.length&&!dg.edges.length) return; if(!confirm('مسح كل المخطط؟')) return; dgSnapshot(); dg={shapes:[],edges:[]}; dgSel=dgSelEdge=null; dgSave(); renderDiagram(); }
+function dgClear(){ if(!dg.shapes.length&&!dg.edges.length) return; if(!confirm('مسح كل المخطط؟')) return; dgSnapshot(); dg={shapes:[],edges:[]}; dgSel=dgSelEdge=null; dgPrintSel.clear(); dgSave(); renderDiagram(); }
 
 function dgCleanSvgString(){
   const src=document.getElementById('dg-svg').cloneNode(true);
@@ -659,7 +691,7 @@ function dgCleanSvgString(){
 function dgToCanvas(cb){
   const data=dgCleanSvgString(); const W=1600,H=1000;
   const img=new Image();
-  img.onload=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H); try{ x.drawImage(img,0,0); }catch(_){}; cb(c); };
+  img.onload=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle=dgBg.color||'#fff'; x.fillRect(0,0,W,H); try{ x.drawImage(img,0,0); }catch(_){}; cb(c); };
   img.onerror=()=>alert('تعذّر تجهيز الصورة للتصدير.');
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(data);
 }
@@ -711,6 +743,75 @@ function dgAddImage(inp){
   rd.onerror=()=>alert('تعذّر قراءة الملف.');
   rd.readAsDataURL(f); inp.value='';
 }
+// ── خلفية البورد: لون + نمط (نقاط/مربعات/بدون)
+function dgLoadBg(){ try{ const d=JSON.parse(LS.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
+function dgSaveBg(){ LS.set('dgbg', JSON.stringify(dgBg)); }
+function dgApplyBg(){
+  const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
+  wrap.style.background=dgBg.color;
+  const dark=/^#(0|1|2|3|4|5|6)/.test(dgBg.color);
+  const line=dark?'rgba(255,255,255,.16)':'rgba(90,110,70,.20)';
+  if(dgBg.pattern==='dots'){ wrap.style.backgroundImage=`radial-gradient(${line} 1.3px, transparent 1.3px)`; wrap.style.backgroundSize='22px 22px'; }
+  else if(dgBg.pattern==='grid'){ wrap.style.backgroundImage=`linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`; wrap.style.backgroundSize='26px 26px'; }
+  else { wrap.style.backgroundImage='none'; }
+  document.querySelectorAll('#dg-bgcolors .swatch').forEach(x=>x.classList.toggle('sel',x.dataset.bg===dgBg.color));
+  document.querySelectorAll('.dg-bgpat').forEach(x=>x.classList.toggle('on',x.dataset.pat===dgBg.pattern));
+}
+function dgSetBgColor(c){ dgBg.color=c; dgSaveBg(); dgApplyBg(); }
+function dgSetBgPattern(p){ dgBg.pattern=p; dgSaveBg(); dgApplyBg(); }
+function dgBuildBg(){
+  const bc=document.getElementById('dg-bgcolors');
+  if(bc) bc.innerHTML=DG_BGCOLORS.map(c=>`<div class="swatch" data-bg="${c}" style="background:${c}" onclick="dgSetBgColor('${c}')"></div>`).join('');
+}
+// ── معاينة الطباعة + التحديد المتعدد بـ Ctrl
+function dgCleanSvgStringOf(shapes, edges){
+  const sdg=dg, ssel=dgSel, sedge=dgSelEdge, sact=dgAct, sprint=dgPrintSel;
+  dg={shapes,edges}; dgSel=null; dgSelEdge=null; dgAct=null; dgPrintSel=new Set();
+  renderDiagram();
+  const str=dgCleanSvgString();
+  dg=sdg; dgSel=ssel; dgSelEdge=sedge; dgAct=sact; dgPrintSel=sprint;
+  renderDiagram();
+  return str;
+}
+function dgBBoxOf(shapes){
+  if(!shapes.length) return {x:0,y:0,w:1600,h:1000};
+  let a=1e9,b=1e9,c=-1e9,d=-1e9;
+  shapes.forEach(s=>{ a=Math.min(a,s.x); b=Math.min(b,s.y); c=Math.max(c,s.x+s.w); d=Math.max(d,s.y+s.h); });
+  const pad=30; a=Math.max(0,a-pad); b=Math.max(0,b-pad); c=Math.min(1600,c+pad); d=Math.min(1000,d+pad);
+  return {x:Math.round(a),y:Math.round(b),w:Math.round(c-a),h:Math.round(d-b)};
+}
+function dgPreviewPrint(){
+  const ids=[...dgPrintSel]; let shapes, edges;
+  if(ids.length){ const keep=new Set(ids); shapes=dg.shapes.filter(s=>keep.has(s.id)); edges=dg.edges.filter(e=>keep.has(e.from)&&keep.has(e.to)); }
+  else { shapes=dg.shapes; edges=dg.edges; }
+  if(!shapes.length){ alert('لا توجد أشكال للمعاينة. أضف أشكالاً أو حدّد بعضها بـ Ctrl+نقر.'); return; }
+  const svgStr=dgCleanSvgStringOf(shapes,edges), bbox=dgBBoxOf(shapes);
+  const img=new Image();
+  img.onload=()=>{
+    const full=document.createElement('canvas'); full.width=1600; full.height=1000;
+    const fx=full.getContext('2d'); fx.fillStyle=dgBg.color||'#fff'; fx.fillRect(0,0,1600,1000); fx.drawImage(img,0,0);
+    const c=document.createElement('canvas'); c.width=bbox.w; c.height=bbox.h;
+    const cx=c.getContext('2d'); cx.fillStyle=dgBg.color||'#fff'; cx.fillRect(0,0,bbox.w,bbox.h);
+    cx.drawImage(full, bbox.x,bbox.y,bbox.w,bbox.h, 0,0,bbox.w,bbox.h);
+    dgShowPreview(c.toDataURL('image/png'), c.toDataURL('image/jpeg',0.92), bbox.w, bbox.h, ids.length);
+  };
+  img.onerror=()=>alert('تعذّر تجهيز المعاينة.');
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
+}
+function dgShowPreview(pngUrl, jpgUrl, w, h, selCount){
+  dgClosePreview();
+  const m=document.createElement('div'); m.id='dg-preview';
+  const tag=selCount? selCount+' عنصر محدد للطباعة' : 'كامل المخطط';
+  m.innerHTML=`<div class="dgpv-box"><div class="dgpv-head"><b>👁️ معاينة الطباعة</b><span class="tag">${tag}</span><button class="x" onclick="dgClosePreview()">✖</button></div>`+
+    `<div class="dgpv-body"><img id="dgpv-img" src="${pngUrl}"></div>`+
+    `<div class="dgpv-foot"><button class="btn btn-success" onclick="dgPrintNow()">🖨️ طباعة</button><button class="btn btn-info" id="dgpv-pdf">📄 PDF</button><button class="btn btn-info" id="dgpv-png">🖼️ PNG</button><button class="btn btn-outline" onclick="dgClosePreview()">إغلاق</button></div></div>`;
+  document.body.appendChild(m);
+  document.getElementById('dgpv-pdf').onclick=()=>dgJpegToPdf(jpgUrl,w,h);
+  document.getElementById('dgpv-png').onclick=()=>dgDL(pngUrl,'diagram-'+new Date().toISOString().slice(0,10)+'.png');
+  m.addEventListener('click', ev=>{ if(ev.target===m) dgClosePreview(); });
+}
+function dgClosePreview(){ const m=document.getElementById('dg-preview'); if(m) m.remove(); }
+function dgPrintNow(){ window.print(); }
 // ── أنواع الأسهم (مستقيم/منحني/متعامد • رأس نهاية/طرفين/بدون • متصل/متقطع)
 function dgCycleEdge(prop){
   if(prop==='style') dgEdgeDefault.style=DG_STYLES[(DG_STYLES.indexOf(dgEdgeDefault.style)+1)%3];
@@ -738,7 +839,7 @@ function dgZoom(f){ dgCloseEditor(); dgScale=Math.min(2.5,Math.max(0.4,dgScale*f
 function dgZoomReset(){ dgCloseEditor(); dgScale=1; dgApplyZoom(); }
 function dgInit(){
   if(dgInited) return; dgInited=true;
-  dgBuildPalette(); dgUpdateEdgeButtons(); dgApplyZoom();
+  dgBuildPalette(); dgBuildBg(); dgLoadBg(); dgUpdateEdgeButtons(); dgApplyZoom(); dgApplyBg();
   const svg=document.getElementById('dg-svg');
   svg.addEventListener('pointerdown', dgDown);
   svg.addEventListener('dblclick', e=>{ const g=e.target.closest('.dg-shape'); if(g){ dgEditText(g.dataset.id); return; } const ed=e.target.closest('.dg-edge-hit')||e.target.closest('.dg-edge'); if(ed) dgEditEdgeLabel(ed.dataset.eid); });
