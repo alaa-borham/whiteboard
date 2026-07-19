@@ -460,11 +460,24 @@ function dgEdgeGeom(ed){
   const p1=dgEdgePoint(a, b.x+b.w/2, b.y+b.h/2);
   const p2=dgEdgePoint(b, a.x+a.w/2, a.y+a.h/2);
   if(st==='curved'){
-    const dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.hypot(dx,dy)||1, off=Math.min(70,len*0.28);
-    const cx=(p1.x+p2.x)/2 - dy/len*off, cy=(p1.y+p2.y)/2 + dx/len*off;
-    return { d:`M${p1.x},${p1.y} Q${cx},${cy} ${p2.x},${p2.y}`, mx:(p1.x/4+cx/2+p2.x/4), my:(p1.y/4+cy/2+p2.y/4), p1, p2 };
+    const d1=dgSideDir(a,p1), d2=dgSideDir(b,p2);
+    const dist=Math.hypot(p2.x-p1.x,p2.y-p1.y), k=Math.max(45,dist*0.5);
+    const c1x=p1.x+d1.x*k, c1y=p1.y+d1.y*k, c2x=p2.x+d2.x*k, c2y=p2.y+d2.y*k;
+    // منتصف منحنى بيزيه التكعيبي عند t=0.5
+    const mx=0.125*p1.x+0.375*c1x+0.375*c2x+0.125*p2.x, my=0.125*p1.y+0.375*c1y+0.375*c2y+0.125*p2.y;
+    return { d:`M${p1.x},${p1.y} C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`, mx, my, p1, p2 };
   }
   return { d:`M${p1.x},${p1.y} L${p2.x},${p2.y}`, mx:(p1.x+p2.x)/2, my:(p1.y+p2.y)/2, p1, p2 };
+}
+// اتجاه الخروج العمودي من ضلع الشكل عند نقطة على الحدود
+function dgSideDir(s, pt){
+  const e=0.6;
+  if(Math.abs(pt.x-s.x)<e) return {x:-1,y:0};
+  if(Math.abs(pt.x-(s.x+s.w))<e) return {x:1,y:0};
+  if(Math.abs(pt.y-s.y)<e) return {x:0,y:-1};
+  if(Math.abs(pt.y-(s.y+s.h))<e) return {x:0,y:1};
+  const dx=pt.x-(s.x+s.w/2), dy=pt.y-(s.y+s.h/2);
+  return Math.abs(dx)>=Math.abs(dy)?{x:Math.sign(dx)||1,y:0}:{x:0,y:Math.sign(dy)||1};
 }
 function dgOrthoGeom(a,b){
   const ac={x:a.x+a.w/2,y:a.y+a.h/2}, bc={x:b.x+b.w/2,y:b.y+b.h/2};
