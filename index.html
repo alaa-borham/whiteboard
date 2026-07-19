@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v13 · 2026-07-19</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v14 · 2026-07-19</span>
 </header>
 
 <div class="tabs">
@@ -190,55 +190,67 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
 
   <!-- ── وضع المخططات (Diagrams) -->
   <section id="pane-diagram" class="pane" style="display:none">
+    <!-- الشريط الأساسي — ظاهر دائماً -->
     <div class="toolbar">
       <div class="dg-palette" id="dg-palette"></div>
       <label class="btn btn-outline" style="cursor:pointer" title="إضافة صورة">🖼️ صورة<input type="file" accept="image/*" onchange="dgAddImage(this)" style="display:none"></label>
-      <button class="btn btn-outline" onclick="dgRemoveBg()" title="إزالة خلفية الصورة المحددة">✂️ إزالة خلفية</button>
-      <div class="sep"></div>
-      <span class="tool-lbl">تعبئة</span>
-      <div class="swatches" id="dg-fills"></div>
-      <span class="tool-lbl">حدود</span>
-      <div class="swatches" id="dg-strokes"></div>
-      <span class="tool-lbl">نص</span>
-      <div class="swatches" id="dg-textcolors"></div>
-      <div class="sep"></div>
       <button class="btn btn-outline" id="dg-connect-btn" onclick="dgToggleConnect()">🔗 توصيل</button>
-      <button class="btn btn-outline" onclick="dgEditSelText()">✎ نص</button>
       <button class="btn btn-outline" onclick="dgUndoDg()">↶ تراجع</button>
-      <button class="btn btn-outline" onclick="dgDeleteSel()">🗑 حذف</button>
       <div class="sep"></div>
       <button class="btn btn-success" onclick="dgPreviewPrint()">👁️ معاينة/طباعة</button>
       <button class="btn btn-info" onclick="dgExportPng()">🖼️ PNG</button>
       <button class="btn btn-info" onclick="dgExportPdf()">📄 PDF</button>
       <button class="btn btn-info" onclick="dgExportSvg()">⬇️ SVG</button>
+      <button class="btn btn-outline" onclick="dgSaveFile()">💾 حفظ</button>
+      <label class="btn btn-outline" style="cursor:pointer">📂 استيراد<input type="file" accept="application/json,.json" onchange="dgImportFile(this)" style="display:none"></label>
+      <span style="flex:1"></span>
       <button class="btn btn-danger" onclick="dgClear()">مسح الكل</button>
     </div>
-    <div class="toolbar" style="margin-top:-4px">
-      <span class="tool-lbl">السهم المحدد:</span>
-      <button class="btn btn-outline" id="dg-eb-style"  onclick="dgCycleEdge('style')">— مستقيم</button>
-      <button class="btn btn-outline" id="dg-eb-arrows" onclick="dgCycleEdge('arrows')">→ نهاية</button>
-      <button class="btn btn-outline" id="dg-eb-dash"   onclick="dgCycleEdge('dash')">▬ متصل</button>
-      <button class="btn btn-outline" id="dg-eb-width"  onclick="dgCycleEdge('width')">سماكة 2</button>
-      <span class="tool-lbl">لونه</span>
-      <div class="swatches" id="dg-edgecolors"></div>
-      <div class="sep"></div>
-      <button class="btn btn-outline" onclick="dgCopy()">📋 نسخ</button>
-      <button class="btn btn-outline" onclick="dgPaste()">📄 لصق</button>
-      <div class="sep"></div>
-      <button class="btn btn-outline" onclick="dgSaveFile()">💾 حفظ ملف</button>
-      <label class="btn btn-outline" style="cursor:pointer">📂 استيراد<input type="file" accept="application/json,.json" onchange="dgImportFile(this)" style="display:none"></label>
-      <div class="sep"></div>
-      <span class="tool-lbl">تكبير:</span>
-      <button class="btn btn-outline" onclick="dgZoom(0.8)">🔍−</button>
-      <span class="tool-lbl" id="dg-zoom-lbl" style="min-width:38px;text-align:center">100%</span>
-      <button class="btn btn-outline" onclick="dgZoom(1.25)">🔍+</button>
-      <button class="btn btn-outline" onclick="dgZoomReset()">⤢ 100%</button>
-      <div class="sep"></div>
-      <span class="tool-lbl">الخلفية:</span>
-      <div class="swatches" id="dg-bgcolors"></div>
-      <button class="btn btn-outline dg-bgpat" data-pat="dots" onclick="dgSetBgPattern('dots')">⋯ نقاط</button>
-      <button class="btn btn-outline dg-bgpat" data-pat="grid" onclick="dgSetBgPattern('grid')">▦ مربعات</button>
-      <button class="btn btn-outline dg-bgpat" data-pat="none" onclick="dgSetBgPattern('none')">▢ سادة</button>
+    <!-- الشريط السياقي — يتغيّر حسب المُحدَّد -->
+    <div class="toolbar" style="margin-top:-4px;min-height:44px">
+      <!-- (١) لا شيء محدَّد → إعدادات اللوحة -->
+      <div id="dg-ctx-canvas" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="tool-lbl">تكبير:</span>
+        <button class="btn btn-outline" onclick="dgZoom(0.8)">🔍−</button>
+        <span class="tool-lbl" id="dg-zoom-lbl" style="min-width:38px;text-align:center">100%</span>
+        <button class="btn btn-outline" onclick="dgZoom(1.25)">🔍+</button>
+        <button class="btn btn-outline" onclick="dgZoomReset()">⤢ 100%</button>
+        <div class="sep"></div>
+        <span class="tool-lbl">خلفية اللوحة:</span>
+        <div class="swatches" id="dg-bgcolors"></div>
+        <button class="btn btn-outline dg-bgpat" data-pat="dots" onclick="dgSetBgPattern('dots')">⋯ نقاط</button>
+        <button class="btn btn-outline dg-bgpat" data-pat="grid" onclick="dgSetBgPattern('grid')">▦ مربعات</button>
+        <button class="btn btn-outline dg-bgpat" data-pat="none" onclick="dgSetBgPattern('none')">▢ سادة</button>
+        <span class="tool-lbl" style="opacity:.75">— حدّد شكلاً أو سهماً لإظهار أدواته • Ctrl+نقر لتحديد متعدد</span>
+      </div>
+      <!-- (٢) شكل محدَّد → ألوانه -->
+      <div id="dg-ctx-shape" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="tool-lbl">تعبئة</span>
+        <div class="swatches" id="dg-fills"></div>
+        <span class="tool-lbl">حدود</span>
+        <div class="swatches" id="dg-strokes"></div>
+        <span class="tool-lbl">نص</span>
+        <div class="swatches" id="dg-textcolors"></div>
+        <div class="sep"></div>
+        <button class="btn btn-outline" onclick="dgEditSelText()">✎ نص</button>
+        <button class="btn btn-outline" onclick="dgRemoveBg()" title="إزالة خلفية الصورة">✂️ إزالة خلفية</button>
+        <button class="btn btn-outline" onclick="dgCopy()">📋 نسخ</button>
+        <button class="btn btn-outline" onclick="dgPaste()">📄 لصق</button>
+        <button class="btn btn-danger" onclick="dgDeleteSel()">🗑 حذف</button>
+      </div>
+      <!-- (٣) سهم محدَّد → أدواته -->
+      <div id="dg-ctx-edge" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="tool-lbl">السهم:</span>
+        <button class="btn btn-outline" id="dg-eb-style"  onclick="dgCycleEdge('style')">— مستقيم</button>
+        <button class="btn btn-outline" id="dg-eb-arrows" onclick="dgCycleEdge('arrows')">→ نهاية</button>
+        <button class="btn btn-outline" id="dg-eb-dash"   onclick="dgCycleEdge('dash')">▬ متصل</button>
+        <button class="btn btn-outline" id="dg-eb-width"  onclick="dgCycleEdge('width')">سماكة 2</button>
+        <span class="tool-lbl">لونه</span>
+        <div class="swatches" id="dg-edgecolors"></div>
+        <div class="sep"></div>
+        <button class="btn btn-outline" onclick="dgEditSelText()">✎ نص السهم</button>
+        <button class="btn btn-danger" onclick="dgDeleteSel()">🗑 حذف</button>
+      </div>
     </div>
     <div id="dg-wrap"><svg id="dg-svg" width="1600" height="1000" viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
   </section>
@@ -598,6 +610,13 @@ function renderDiagram(){
 }
 function dgMarkSwatch(sel,attr,val){ document.querySelectorAll(sel+' .swatch').forEach(x=>x.classList.toggle('sel', x.dataset[attr]===val)); }
 function dgSyncControls(){
+  // الشريط السياقي: يظهر منه قسم واحد حسب المحدَّد
+  const cv=document.getElementById('dg-ctx-canvas'), sh=document.getElementById('dg-ctx-shape'), eg=document.getElementById('dg-ctx-edge');
+  if(cv&&sh&&eg){
+    cv.style.display = (!dgSel&&!dgSelEdge)?'flex':'none';
+    sh.style.display = dgSel?'flex':'none';
+    eg.style.display = dgSelEdge?'flex':'none';
+  }
   if(dgSel){ const s=dgShape(dgSel); if(s){ dgMarkSwatch('#dg-fills','f',s.fill||'#ffffff'); dgMarkSwatch('#dg-strokes','s',s.stroke||'#333333'); dgMarkSwatch('#dg-textcolors','tc',s.textColor||'#222222'); } }
   if(dgSelEdge){ const e=dg.edges.find(x=>x.id===dgSelEdge); if(e){ dgEdgeDefault.style=e.style||'straight'; dgEdgeDefault.arrows=e.arrows||'end'; dgEdgeDefault.dash=!!e.dash; dgEdgeDefault.width=e.width||2; dgEdgeDefault.color=e.color||'#555555'; dgUpdateEdgeButtons(); dgMarkSwatch('#dg-edgecolors','ec',dgEdgeDefault.color); } }
 }
