@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-24 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-25 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -437,7 +437,7 @@ const DG_TEXTCOLORS = ['#222222','#ffffff','#1565c0','#2e7d32','#c62828','#e6510
 const DG_EDGECOLORS = ['#555555','#ffffff','#111111','#1565c0','#2e7d32','#c62828','#e65100','#6a1b9a','#00838f'];
 const DG_WIDTHS = [1,2,3,4,6];
 let dg = { shapes:[], edges:[] };
-let dgSel=null, dgSelEdge=null, dgConnect=false, dgConnectFrom=null, dgAct=null, dgInited=false, dgAddIdx=0;
+let dgSel=null, dgSelEdge=null, dgConnect=false, dgConnectFrom=null, dgAct=null, dgInited=false, dgAddIdx=0, dgEditPoint=null;
 let dgFill='#ffffff', dgStroke='#333333';
 let dgUndoStack=[];
 let dgClipboard=null, dgScale=1, dgLastClick=null;
@@ -558,7 +558,8 @@ function dgOrthoGeom(a,b){
 function dgAddEdge(from,to){
   if(from===to) return;
   if(dg.edges.some(e=>e.from===from&&e.to===to)) return;
-  dgSnapshot(); dg.edges.push({ id:uid(), from, to, label:'', style:dgEdgeDefault.style, arrows:dgEdgeDefault.arrows, dash:dgEdgeDefault.dash, color:dgEdgeDefault.color, width:dgEdgeDefault.width }); dgSave(); renderDiagram();
+  dgSnapshot(); const a=dgShape(from), b=dgShape(to); const mx=(a.x+a.w/2+b.x+b.w/2)/2, my=(a.y+a.h/2+b.y+b.h/2)/2;
+  dg.edges.push({ id:uid(), from, to, label:'', style:dgEdgeDefault.style, arrows:dgEdgeDefault.arrows, dash:dgEdgeDefault.dash, color:dgEdgeDefault.color, width:dgEdgeDefault.width, controlPoints:[{x:Math.round(mx),y:Math.round(my)}] }); dgSave(); renderDiagram();
 }
 
 // ── رسم جسم الشكل بإحداثيات محلية (0..w , 0..h)
@@ -609,7 +610,12 @@ function renderDiagram(){
     h+=`<path class="dg-edge-hit" data-eid="${ed.id}" d="${g.d}" fill="none"/>`;
     h+=`<path class="dg-edge" data-eid="${ed.id}" d="${g.d}" fill="none" stroke="${col}" stroke-width="${wdt}"${dash}${me}${ms}/>`;
     if(ed.label) h+=`<text x="${g.mx}" y="${g.my-5}" text-anchor="middle" font-size="12" fill="#444" style="paint-order:stroke;stroke:#fff;stroke-width:3;pointer-events:none">${esc(ed.label)}</text>`;
-    if(sel&&g.p1&&g.p2){ h+=`<circle cx="${g.p1.x}" cy="${g.p1.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/><circle cx="${g.p2.x}" cy="${g.p2.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/>`; }
+    if(sel&&g.p1&&g.p2){
+      h+=`<circle cx="${g.p1.x}" cy="${g.p1.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/><circle cx="${g.p2.x}" cy="${g.p2.y}" r="5" fill="#fff" stroke="#2e7d32" stroke-width="1.6" style="pointer-events:none"/>`;
+      if(ed.controlPoints&&ed.controlPoints.length>0){
+        ed.controlPoints.forEach((pt,i)=>{ h+=`<circle class="dg-ctrl-pt" data-eid="${ed.id}" data-idx="${i}" cx="${pt.x}" cy="${pt.y}" r="4" fill="#ffeb3b" stroke="#f57f17" stroke-width="1.5" cursor="grab" style="cursor:grab"/>`; });
+      }
+    }
   });
   dg.shapes.forEach(s=>{
     const pmark=dgPrintSel.has(s.id)?`<rect fill="none" stroke="#1565c0" stroke-width="2.5" stroke-dasharray="6 3" x="-4" y="-4" width="${s.w+8}" height="${s.h+8}" style="pointer-events:none"/>`:'';
@@ -635,6 +641,7 @@ function dgSyncControls(){
 function dgSvgPos(e){ const svg=document.getElementById('dg-svg'); const r=svg.getBoundingClientRect(); const vb=svg.viewBox.baseVal; const sx=(vb.width>0?vb.width:1600)/r.width, sy=(vb.height>0?vb.height:1000)/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
 function dgDown(e){
   const t=e.target, p=dgSvgPos(e);
+  if(t.classList.contains('dg-ctrl-pt')){ e.preventDefault(); const eid=t.dataset.eid, idx=+t.dataset.idx; dgAct={type:'moveCtrlPt',eid,idx,sx:p.x,sy:p.y}; return; }
   if(t.classList.contains('dg-handle')){ e.preventDefault(); const s=dgShape(dgSel); dgAct={type:'resize',id:dgSel,h:+t.dataset.h,ox:s.x,oy:s.y,ow:s.w,oh:s.h,sx:p.x,sy:p.y,snapped:false}; return; }
   if(t.classList.contains('dg-port')){ e.preventDefault(); const s=dgShape(dgSel); const fx=(+t.getAttribute('cx'))+(s?s.x:0), fy=(+t.getAttribute('cy'))+(s?s.y:0); dgAct={type:'connect',from:dgSel,cur:p,fromX:fx,fromY:fy}; renderDiagram(); return; }
   const g=t.closest('.dg-shape');
@@ -656,7 +663,8 @@ function dgDown(e){
 }
 function dgMove(e){
   if(!dgAct) return; const p=dgSvgPos(e);
-  if(dgAct.type==='move'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } s.x=Math.max(0,Math.round(dgAct.ox+(p.x-dgAct.sx))); s.y=Math.max(0,Math.round(dgAct.oy+(p.y-dgAct.sy))); dgAct.moved=true; renderDiagram(); }
+  if(dgAct.type==='moveCtrlPt'){ const ed=dg.edges.find(x=>x.id===dgAct.eid); if(ed&&ed.controlPoints){ if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } ed.controlPoints[dgAct.idx]={x:Math.round(p.x),y:Math.round(p.y)}; renderDiagram(); } }
+  else if(dgAct.type==='move'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } s.x=Math.max(0,Math.round(dgAct.ox+(p.x-dgAct.sx))); s.y=Math.max(0,Math.round(dgAct.oy+(p.y-dgAct.sy))); dgAct.moved=true; renderDiagram(); }
   else if(dgAct.type==='resize'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } const dx=p.x-dgAct.sx, dy=p.y-dgAct.sy; let x=dgAct.ox,y=dgAct.oy,w=dgAct.ow,ht=dgAct.oh;
     if(dgAct.h===0){ x=dgAct.ox+dx; y=dgAct.oy+dy; w=dgAct.ow-dx; ht=dgAct.oh-dy; }
     else if(dgAct.h===1){ y=dgAct.oy+dy; w=dgAct.ow+dx; ht=dgAct.oh-dy; }
