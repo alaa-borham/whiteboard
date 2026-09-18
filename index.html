@@ -53,7 +53,7 @@ main{max-width:1500px;margin:14px auto 40px;padding:0 16px;width:100%;flex:1}
 input[type=color]{width:34px;height:30px;border:none;background:none;cursor:pointer;padding:0}
 /* ── الرسم الحر */
 #canvas-wrap{position:relative;width:100%;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px;border:1.5px solid #e0e6d8;border-radius:12px;overflow:hidden;touch-action:none}
-#canvas{display:block;width:100%;height:auto;cursor:crosshair}
+#canvas{display:block;width:100%;height:100%;cursor:crosshair}
 /* ── لوحة المهام */
 #board{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
 .col{background:#f6f9f2;border:1px solid #e2e9d6;border-radius:12px;padding:10px;min-height:120px}
@@ -136,7 +136,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v51 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v52 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -155,6 +155,13 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
       <div class="sep"></div>
       <span class="tool-lbl">سماكة</span>
       <input type="range" id="size" min="1" max="40" value="4" oninput="S.size=+this.value" style="width:110px">
+      <div class="sep"></div>
+      <button class="btn btn-outline" id="tool-free" onclick="setDrawMode('free')" title="رسم حر">✏️ حر</button>
+      <button class="btn btn-outline" id="tool-line" onclick="setDrawMode('line')" title="خط">📏 خط</button>
+      <button class="btn btn-outline" id="tool-rect" onclick="setDrawMode('rect')" title="مربع">▭ مربع</button>
+      <button class="btn btn-outline" id="tool-circle" onclick="setDrawMode('circle')" title="دائرة">◯ دائرة</button>
+      <button class="btn btn-outline" id="tool-arrow" onclick="setDrawMode('arrow')" title="سهم">➜ سهم</button>
+      <button class="btn btn-outline" id="tool-diamond" onclick="setDrawMode('diamond')" title="معين">◇ معين</button>
       <div class="sep"></div>
       <button class="btn btn-outline" id="eraser-btn" onclick="toggleEraser()">🧽 ممحاة</button>
       <button class="btn btn-outline" onclick="undo()">↶ تراجع</button>
@@ -660,34 +667,104 @@ function undo(){ if(!S.undoStack.length) return; const url=S.undoStack.pop(), im
 function clearCanvas(){ if(!confirm('مسح الرسمة بالكامل؟')) return; snapshot(); clearCtx(); saveCanvas(); }
 function savePng(){ const a=document.createElement('a'); a.download='whiteboard-'+new Date().toISOString().slice(0,10)+'.png'; a.href=cv.toDataURL('image/png'); a.click(); }
 
+// إعدادات أدوات الرسم
+S.drawMode = 'free';
+S.start = null;
+S.tempCanvas = null;
+
+function setDrawMode(mode){
+  S.drawMode = mode;
+  document.querySelectorAll('[id^="tool-"]').forEach(b=>b.classList.remove('btn-warning'));
+  document.getElementById('tool-'+mode)?.classList.add('btn-warning');
+}
+
+function drawShape(start, end, c){
+  switch(S.drawMode){
+    case 'line':
+      c.beginPath(); c.moveTo(start.x,start.y); c.lineTo(end.x,end.y); c.stroke();
+      break;
+    case 'rect':
+      const w=end.x-start.x, h=end.y-start.y;
+      c.fillRect(start.x,start.y,w,h);
+      c.strokeRect(start.x,start.y,w,h);
+      break;
+    case 'circle':
+      const r=Math.sqrt(Math.pow(end.x-start.x,2)+Math.pow(end.y-start.y,2));
+      c.beginPath(); c.arc(start.x,start.y,r,0,Math.PI*2); c.fill(); c.stroke();
+      break;
+    case 'arrow':
+      const dx=end.x-start.x, dy=end.y-start.y, len=Math.sqrt(dx*dx+dy*dy);
+      if(len>0){
+        c.beginPath(); c.moveTo(start.x,start.y); c.lineTo(end.x,end.y); c.stroke();
+        const angle=Math.atan2(dy,dx), arrowSize=12;
+        c.beginPath(); c.moveTo(end.x,end.y);
+        c.lineTo(end.x-arrowSize*Math.cos(angle-Math.PI/6),end.y-arrowSize*Math.sin(angle-Math.PI/6));
+        c.lineTo(end.x-arrowSize*Math.cos(angle+Math.PI/6),end.y-arrowSize*Math.sin(angle+Math.PI/6));
+        c.closePath(); c.fill();
+      }
+      break;
+    case 'diamond':
+      const mx=start.x, my=start.y, dx2=end.x-start.x, dy2=end.y-start.y;
+      c.beginPath(); c.moveTo(mx+dx2,my); c.lineTo(mx,my+dy2); c.lineTo(mx-dx2,my); c.lineTo(mx,my-dy2); c.closePath();
+      c.fill(); c.stroke();
+      break;
+  }
+}
+
 // معالجات أحداث الرسم
 cv.addEventListener('pointerdown', e=>{
   e.preventDefault();
   snapshot();
   S.drawing=true;
-  S.last=pos(e);
+  S.start=pos(e);
+  S.last=S.start;
   try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+
+  if(S.drawMode==='free' || S.eraser){
+    // سيتم الرسم في pointermove
+  }
 });
 
 cv.addEventListener('pointermove', e=>{
   if(!S.drawing) return;
   const p=pos(e), c=ctx();
-  c.lineCap='round';
-  c.lineJoin='round';
-  c.lineWidth = S.eraser ? S.size*2.5 : S.size;
-  c.strokeStyle = S.eraser ? '#fff' : S.color;
-  c.beginPath();
-  c.moveTo(S.last.x,S.last.y);
-  c.lineTo(p.x,p.y);
-  c.stroke();
-  S.last=p;
+
+  if(S.drawMode==='free'){
+    // رسم حر - رسم الخط من آخر موضع إلى الموضع الحالي
+    c.lineCap='round';
+    c.lineJoin='round';
+    c.lineWidth = S.eraser ? S.size*2.5 : S.size;
+    c.strokeStyle = S.eraser ? '#fff' : S.color;
+    c.beginPath();
+    c.moveTo(S.last.x,S.last.y);
+    c.lineTo(p.x,p.y);
+    c.stroke();
+    S.last=p;
+  } else {
+    // أشكال - إعادة رسم مع الشكل المؤقت
+    loadCanvas();
+    const c=ctx();
+    c.lineWidth = S.size;
+    c.strokeStyle = S.color;
+    c.fillStyle = S.color;
+    drawShape(S.start, p, c);
+  }
 });
 
 ['pointerup','pointerleave'].forEach(ev=>
   cv.addEventListener(ev, ()=>{
     if(S.drawing){
       S.drawing=false;
+      if(S.drawMode!=='free'){
+        // تأكد من رسم الشكل النهائي
+        const c=ctx();
+        c.lineWidth = S.size;
+        c.strokeStyle = S.color;
+        c.fillStyle = S.color;
+        drawShape(S.start, S.last, c);
+      }
       saveCanvas();
+      S.start=null;
     }
   })
 );
@@ -1494,6 +1571,7 @@ function dgInit(){
   dgInit();
   setTheme(LS.get('theme','light'));
   setMode(LS.get('mode','draw'));
+  setDrawMode('free');
 })();
 function setTheme(t){
   document.body.classList.remove('theme-dark','theme-gray');
