@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v30 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v31 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -631,7 +631,6 @@ function dgSvgPos(e){
   const wrap=document.getElementById('dg-wrap');
   if(!svg || !wrap) return {x:0,y:0};
 
-  const wrapR=wrap.getBoundingClientRect();
   const svgR=svg.getBoundingClientRect();
   if(svgR.width<=0 || svgR.height<=0) return {x:0,y:0};
 
@@ -639,9 +638,10 @@ function dgSvgPos(e){
   const relX=(e.clientX-svgR.left)+sx;
   const relY=(e.clientY-svgR.top)+sy;
 
+  const scale=dgScale||1;
   return {
-    x: Math.round(relX*1600/svgR.width),
-    y: Math.round(relY*1000/svgR.height)
+    x: Math.round(relX/(scale)),
+    y: Math.round(relY/(scale))
   };
 }
 function dgDown(e){
