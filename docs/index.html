@@ -31,7 +31,7 @@ header a.home:hover{background:rgba(255,255,255,.2)}
 .tab{background:var(--btnbg);border:1.5px solid var(--surface2);color:var(--btnink);border-radius:11px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .15s}
 .tab:hover{border-color:var(--g1)}
 .tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2);box-shadow:0 4px 12px rgba(124,179,66,.3)}
-main{max-width:1500px;margin:14px auto 40px;padding:0 16px;width:100%;flex:1}
+main{max-width:1500px;margin:14px auto 0;padding:0 16px;width:100%;flex:1;display:flex;flex-direction:column}
 .pane{background:var(--pane);border:1px solid var(--line);border-radius:14px;padding:14px}
 /* ── الأزرار */
 .btn{border:none;border-radius:9px;padding:7px 13px;font-family:inherit;font-weight:700;font-size:.84rem;cursor:pointer;transition:all .15s}
@@ -87,7 +87,8 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
 .dg-shape-btn:hover{border-color:var(--g1);background:#f1f7e8}
 .dg-shape-btn svg{width:100%;height:100%;display:block}
 .dg-hint{font-size:.76rem;color:#888;margin:2px 0 8px}
-#dg-wrap{position:relative;direction:ltr;width:100%;height:min(66vh,600px);overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px}
+#dg-wrap{position:relative;direction:ltr;width:100%;height:calc(100vh - 240px);min-height:400px;overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px;flex:1}
+#dg-wrap:fullscreen{width:100vw;height:100vh;border:none;border-radius:0;margin:0;padding:0}
 #dg-svg{display:block;touch-action:none;user-select:none}
 .dg-shape{cursor:grab}
 .dg-shape .dg-body{transition:stroke .1s}
@@ -131,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v16 · 2026-07-19</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-10 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -497,7 +498,7 @@ function dgAddShape(t){
   const base=40 + (dgAddIdx%6)*26;
   const x=Math.round((wrap.scrollLeft||0)+60+base), y=Math.round((wrap.scrollTop||0)+50+base);
   dgAddIdx++;
-  dg.shapes.push({ id:uid(), type:t, x, y, w, h, text:'', fill:dgFill, stroke:dgStroke });
+  dg.shapes.push({ id:uid(), type:t, x, y, w, h, text:'', fill:dgFill, stroke:dgStroke, textColor:dgTextColor });
   dgSel=dg.shapes[dg.shapes.length-1].id; dgSelEdge=null;
   dgSave(); renderDiagram();
 }
@@ -607,6 +608,9 @@ function renderDiagram(){
   });
   if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a){ const fx=dgAct.fromX!=null?dgAct.fromX:a.x+a.w, fy=dgAct.fromY!=null?dgAct.fromY:a.y+a.h/2; h+=`<line x1="${fx}" y1="${fy}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; } }
   svg.innerHTML=h;
+  if(!dgAct){ let maxX=1600, maxY=1000;
+  if(dg.shapes.length>0){ dg.shapes.forEach(s=>{ maxX=Math.max(maxX,s.x+s.w+100); maxY=Math.max(maxY,s.y+s.h+100); }); dg.edges.forEach(e=>{ const g=dgEdgeGeom(e); if(g){ maxX=Math.max(maxX,g.mx+100); maxY=Math.max(maxY,g.my+100); } }); }
+  svg.setAttribute('width',Math.round(maxX)); svg.setAttribute('height',Math.round(maxY)); svg.setAttribute('viewBox',`0 0 ${Math.round(maxX)} ${Math.round(maxY)}`); }
   dgSyncControls();
 }
 function dgMarkSwatch(sel,attr,val){ document.querySelectorAll(sel+' .swatch').forEach(x=>x.classList.toggle('sel', x.dataset[attr]===val)); }
@@ -622,7 +626,7 @@ function dgSyncControls(){
   if(dgSelEdge){ const e=dg.edges.find(x=>x.id===dgSelEdge); if(e){ dgEdgeDefault.style=e.style||'straight'; dgEdgeDefault.arrows=e.arrows||'end'; dgEdgeDefault.dash=!!e.dash; dgEdgeDefault.width=e.width||2; dgEdgeDefault.color=e.color||'#555555'; dgUpdateEdgeButtons(); dgMarkSwatch('#dg-edgecolors','ec',dgEdgeDefault.color); } }
 }
 
-function dgSvgPos(e){ const r=document.getElementById('dg-svg').getBoundingClientRect(); return { x:(e.clientX-r.left)*(1600/r.width), y:(e.clientY-r.top)*(1000/r.height) }; }
+function dgSvgPos(e){ const svg=document.getElementById('dg-svg'); const r=svg.getBoundingClientRect(); const vb=svg.viewBox.baseVal; const sx=(vb.width>0?vb.width:1600)/r.width, sy=(vb.height>0?vb.height:1000)/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
 function dgDown(e){
   const t=e.target, p=dgSvgPos(e);
   if(t.classList.contains('dg-handle')){ e.preventDefault(); const s=dgShape(dgSel); dgAct={type:'resize',id:dgSel,h:+t.dataset.h,ox:s.x,oy:s.y,ow:s.w,oh:s.h,sx:p.x,sy:p.y,snapped:false}; return; }
@@ -684,11 +688,41 @@ function dgUp(e){
 function dgKey(e){
   if(S.mode!=='diagram') return;
   const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea') return;
+  if((e.ctrlKey||e.metaKey)&&(e.key==='a'||e.key==='A')){ e.preventDefault(); dgSelectAll(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='c'||e.key==='C')){ if(dgSel){ e.preventDefault(); dgCopy(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='v'||e.key==='V')){ if(dgClipboard){ e.preventDefault(); dgPaste(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); dgUndoDg(); return; }
+  if(e.key==='k'||e.key==='K'){ e.preventDefault(); dgToggleFullscreen(); return; }
   if(e.key==='Delete'||e.key==='Backspace'){ if(dgSel||dgSelEdge){ e.preventDefault(); dgDeleteSel(); } }
   else if(dgSel && (e.key==='Enter'||e.key==='F2')){ e.preventDefault(); dgEditText(dgSel); }
+}
+function dgSelectAll(){
+  if(dg.shapes.length===0){ alert('لا توجد أشكال للتحديد.'); return; }
+  dg.shapes.forEach(s=>dgPrintSel.add(s.id)); dgSel=null; dgSelEdge=null; renderDiagram();
+}
+function dgUpdateSvgForFullscreen(){
+  const svg=document.getElementById('dg-svg'); if(!svg) return;
+  const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
+  if(document.fullscreenElement||document.webkitFullscreenElement){
+    // في وضع الملء الكامل: اجعل الـ SVG يملأ الشاشة
+    svg.setAttribute('width',window.innerWidth);
+    svg.setAttribute('height',window.innerHeight);
+    svg.setAttribute('viewBox',`0 0 ${window.innerWidth} ${window.innerHeight}`);
+    dgScale=1;
+  } else {
+    // خروج من الملء: استعد الأبعاد الأصلية
+    renderDiagram();
+  }
+}
+function dgToggleFullscreen(){
+  const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
+  if(document.fullscreenElement||document.webkitFullscreenElement){
+    if(document.exitFullscreen) document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } else {
+    if(wrap.requestFullscreen) wrap.requestFullscreen();
+    else if(wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+  }
 }
 function dgDeleteSel(){
   if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgPrintSel.delete(dgSel); dgSel=null; dgSave(); renderDiagram(); }
@@ -774,9 +808,10 @@ function dgJpegToPdf(dataUrl, iw, ih){
   for(let n=1;n<=5;n++) x+=String(off[n]).padStart(10,'0')+' 00000 n \n';
   push(x); push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF');
   const url=URL.createObjectURL(new Blob(parts,{type:'application/pdf'}));
-  dgDL(url,'diagram-'+new Date().toISOString().slice(0,10)+'.pdf'); setTimeout(()=>URL.revokeObjectURL(url),3000);
+  dgDL(url,'diagram-'+new Date().toISOString().slice(0,10)+'.pdf'); setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-// ── استيراد صورة كعنصر في المخطط (يُحرَّك ويُغيَّر حجمه مثل الأشكال)
+// استيراد صورة كعنصر في المخطط (يُحرَّك ويُغيَّر حجمه مثل الأشكال)
+// ⚠️ تحذير: الصور الكبيرة قد تتجاوز حد localStorage (5-10MB) — استخدم صوراً صغيرة فقط
 function dgAddImage(inp){
   const f=inp.files&&inp.files[0]; if(!f){ return; }
   if(!/^image\//.test(f.type||'')){ alert('اختر ملف صورة.'); inp.value=''; return; }
@@ -813,7 +848,7 @@ function dgRemoveBg(){
     // تعبئة فيضية من الحواف: تُزال الخلفية الخارجية المتصلة بالأطراف فقط،
     // ويبقى داخل التصميم (ولو بنفس اللون) سليماً — فيقبل التعبئة بالألوان
     const tol=62, tol2=tol*tol;
-    const near=i=>{ const dr=d[i]-br, dgn=d[i+1]-bg, db=d[i+2]-bb; return dr*dr+dgn*dgn+db*db < tol2; };
+    const near=i=>{ const dr=d[i]-br, dg=d[i+1]-bg, db=d[i+2]-bb; return dr*dr+dg*dg+db*db < tol2; };
     const visited=new Uint8Array(W*H); const stack=[];
     for(let xx=0; xx<W; xx++){ stack.push(xx, (H-1)*W+xx); }
     for(let yy=0; yy<H; yy++){ stack.push(yy*W, yy*W+W-1); }
@@ -899,7 +934,7 @@ function dgBBoxOf(shapes){
   if(!shapes.length) return {x:0,y:0,w:1600,h:1000};
   let a=1e9,b=1e9,c=-1e9,d=-1e9;
   shapes.forEach(s=>{ a=Math.min(a,s.x); b=Math.min(b,s.y); c=Math.max(c,s.x+s.w); d=Math.max(d,s.y+s.h); });
-  const pad=30; a=Math.max(0,a-pad); b=Math.max(0,b-pad); c=Math.min(1600,c+pad); d=Math.min(1000,d+pad);
+  const pad=30; a=Math.max(0,a-pad); b=Math.max(0,b-pad); c=Math.max(c+pad,1600); d=Math.max(d+pad,1000);
   return {x:Math.round(a),y:Math.round(b),w:Math.round(c-a),h:Math.round(d-b)};
 }
 function dgPreviewPrint(){
@@ -957,7 +992,7 @@ function dgSaveFile(){ const blob=new Blob([JSON.stringify(dg,null,2)],{type:'ap
 function dgImportFile(inp){ const f=inp.files&&inp.files[0]; if(!f){ return; } const rd=new FileReader(); rd.onload=()=>{ try{ const d=JSON.parse(rd.result); if(d&&Array.isArray(d.shapes)&&Array.isArray(d.edges)){ dgSnapshot(); dg=d; dgSel=dgSelEdge=null; dgSave(); renderDiagram(); } else alert('ملف غير صالح.'); }catch(_){ alert('تعذّر قراءة الملف.'); } inp.value=''; }; rd.readAsText(f); }
 // ── تكبير/تصغير
 function dgApplyZoom(){ const svg=document.getElementById('dg-svg'); if(svg){ svg.setAttribute('width',Math.round(1600*dgScale)); svg.setAttribute('height',Math.round(1000*dgScale)); } const z=document.getElementById('dg-zoom-lbl'); if(z) z.textContent=Math.round(dgScale*100)+'%'; }
-function dgZoom(f){ dgCloseEditor(); dgScale=Math.min(2.5,Math.max(0.4,dgScale*f)); dgApplyZoom(); }
+function dgZoom(f){ dgCloseEditor(); dgScale=Math.min(2.5,Math.max(0.1,dgScale*f)); dgApplyZoom(); }
 function dgZoomReset(){ dgCloseEditor(); dgScale=1; dgApplyZoom(); }
 // ── توسيط التصميم: يجلب كل المحتوى إلى منتصف الشاشة بمقاس مناسب
 function dgFitView(){
@@ -967,7 +1002,7 @@ function dgFitView(){
   const bb=dgBBoxOf(dg.shapes);
   const fw=wrap.clientWidth||800, fh=wrap.clientHeight||500;
   let sc=Math.min(fw/bb.w, fh/bb.h)*0.9;
-  sc=Math.min(2.5, Math.max(0.4, sc));
+  sc=Math.min(2.5, Math.max(0.1, sc));
   dgScale=sc; dgApplyZoom();
   wrap.scrollLeft=Math.max(0, (bb.x+bb.w/2)*sc - fw/2);
   wrap.scrollTop =Math.max(0, (bb.y+bb.h/2)*sc - fh/2);
@@ -981,6 +1016,8 @@ function dgInit(){
   window.addEventListener('pointermove', dgMove);
   window.addEventListener('pointerup', dgUp);
   window.addEventListener('keydown', dgKey);
+  document.addEventListener('fullscreenchange', dgUpdateSvgForFullscreen);
+  document.addEventListener('webkitfullscreenchange', dgUpdateSvgForFullscreen);
 }
 
 /* ═══ تهيئة ═══ */
@@ -1001,7 +1038,12 @@ function setTheme(t){
   document.querySelectorAll('.thm button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
 }
 // عامل الخدمة: يضمن تحميل أحدث نسخة تلقائياً عند الاتصال
-if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a9').map(n=>caches.delete(n)))).catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
