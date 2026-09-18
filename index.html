@@ -1001,7 +1001,13 @@ function setTheme(t){
   document.querySelectorAll('.thm button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
 }
 // عامل الخدمة: يضمن تحميل أحدث نسخة تلقائياً عند الاتصال
-if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    // فرض مسح جميع النسخ القديمة من الـ cache
+    caches.keys().then(names=>{ names.forEach(name=>{ if(name!=='wb-a3') caches.delete(name); }); });
+  });
+}
 </script>
 </body>
 </html>
