@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-10 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-11 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -692,6 +692,8 @@ function dgKey(e){
   if((e.ctrlKey||e.metaKey)&&(e.key==='c'||e.key==='C')){ if(dgSel){ e.preventDefault(); dgCopy(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='v'||e.key==='V')){ if(dgClipboard){ e.preventDefault(); dgPaste(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); dgUndoDg(); return; }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='-'||e.key==='_')){ e.preventDefault(); dgZoom(0.8); return; }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='+'||e.key==='=')){ e.preventDefault(); dgZoom(1.25); return; }
   if(e.key==='k'||e.key==='K'){ e.preventDefault(); dgToggleFullscreen(); return; }
   if(e.key==='Delete'||e.key==='Backspace'){ if(dgSel||dgSelEdge){ e.preventDefault(); dgDeleteSel(); } }
   else if(dgSel && (e.key==='Enter'||e.key==='F2')){ e.preventDefault(); dgEditText(dgSel); }
