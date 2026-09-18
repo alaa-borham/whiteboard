@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v27 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v28 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -631,16 +631,21 @@ function dgSvgPos(e){
   if(!svg) return {x:0,y:0};
   const wrap=document.getElementById('dg-wrap');
   if(!wrap) return {x:0,y:0};
+
   const rect=svg.getBoundingClientRect();
+  const wrapRect=wrap.getBoundingClientRect();
   const vb=svg.getAttribute('viewBox');
   if(!vb) return {x:0,y:0};
+
   const [vbx,vby,vbw,vbh]=vb.split(' ').map(Number);
   if(!vbw || !vbh || rect.width<=0 || rect.height<=0) return {x:0,y:0};
+
   const scrollLeft=wrap.scrollLeft||0, scrollTop=wrap.scrollTop||0;
-  const px=e.clientX-rect.left;
-  const py=e.clientY-rect.top;
-  const x=vbx + (px+scrollLeft)*(vbw/rect.width);
-  const y=vby + (py+scrollTop)*(vbh/rect.height);
+  const px=(e.clientX-rect.left)+(wrapRect.left-rect.left)+scrollLeft;
+  const py=(e.clientY-rect.top)+(wrapRect.top-rect.top)+scrollTop;
+
+  const x=vbx + px*(vbw/rect.width);
+  const y=vby + py*(vbh/rect.height);
   if(isNaN(x)||isNaN(y)) return {x:0,y:0};
   return {x,y};
 }
