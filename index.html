@@ -899,7 +899,7 @@ function dgBBoxOf(shapes){
   if(!shapes.length) return {x:0,y:0,w:1600,h:1000};
   let a=1e9,b=1e9,c=-1e9,d=-1e9;
   shapes.forEach(s=>{ a=Math.min(a,s.x); b=Math.min(b,s.y); c=Math.max(c,s.x+s.w); d=Math.max(d,s.y+s.h); });
-  const pad=30; a=Math.max(0,a-pad); b=Math.max(0,b-pad); c=Math.min(1600,c+pad); d=Math.min(1000,d+pad);
+  const pad=30; a=Math.max(0,a-pad); b=Math.max(0,b-pad); c=Math.max(c+pad,1600); d=Math.max(d+pad,1000);
   return {x:Math.round(a),y:Math.round(b),w:Math.round(c-a),h:Math.round(d-b)};
 }
 function dgPreviewPrint(){
