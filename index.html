@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v31 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v32 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -626,7 +626,7 @@ function dgSyncControls(){
   if(dgSelEdge){ const e=dg.edges.find(x=>x.id===dgSelEdge); if(e){ dgEdgeDefault.style=e.style||'straight'; dgEdgeDefault.arrows=e.arrows||'end'; dgEdgeDefault.dash=!!e.dash; dgEdgeDefault.width=e.width||2; dgEdgeDefault.color=e.color||'#555555'; dgUpdateEdgeButtons(); dgMarkSwatch('#dg-edgecolors','ec',dgEdgeDefault.color); } }
 }
 
-function dgSvgPos(e){
+function dgSvgPos(e, scale){
   const svg=document.getElementById('dg-svg');
   const wrap=document.getElementById('dg-wrap');
   if(!svg || !wrap) return {x:0,y:0};
@@ -638,10 +638,10 @@ function dgSvgPos(e){
   const relX=(e.clientX-svgR.left)+sx;
   const relY=(e.clientY-svgR.top)+sy;
 
-  const scale=dgScale||1;
+  const s=scale||dgScale||1;
   return {
-    x: Math.round(relX/(scale)),
-    y: Math.round(relY/(scale))
+    x: Math.round(relX/s),
+    y: Math.round(relY/s)
   };
 }
 function dgDown(e){
@@ -658,7 +658,7 @@ function dgDown(e){
     dgLastClick={id,t:now};
     if(!dgMultiSel.has(id)) dgMultiSel.clear();
     dgMultiSel.add(id); dgSel=id; dgSelEdge=null; const s=dgShape(id);
-    dgAct={type:'move',id,ox:s.x,oy:s.y,sx:p.x,sy:p.y,moved:false,snapped:false,multi:Array.from(dgMultiSel)}; renderDiagram(); return;
+    dgAct={type:'move',id,ox:s.x,oy:s.y,sx:p.x,sy:p.y,scale:dgScale,moved:false,snapped:false,multi:Array.from(dgMultiSel)}; renderDiagram(); return;
   }
   const ed=t.closest('.dg-edge-hit')||t.closest('.dg-edge');
   if(ed){ const eid=ed.dataset.eid; const now=Date.now();
@@ -667,7 +667,7 @@ function dgDown(e){
   dgLastClick=null; dgSel=null; dgSelEdge=null; dgMultiSel.clear(); dgPrintSel.clear(); if(dgConnect){ dgConnectFrom=null; } renderDiagram();
 }
 function dgMove(e){
-  if(!dgAct) return; const p=dgSvgPos(e);
+  if(!dgAct) return; const p=dgSvgPos(e, dgAct.type==='move' ? dgAct.scale : null);
   if(dgAct.type==='move'){
     if(!dgAct.snapped){
       dgSnapshot();
