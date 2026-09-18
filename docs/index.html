@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-28 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-29 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -687,7 +687,7 @@ function dgDown(e){
 }
 function dgMove(e){
   if(!dgAct) return; const p=dgSvgPos(e);
-  if(dgAct.type==='moveCtrlPt'){ const ed=dg.edges.find(x=>x.id===dgAct.eid); if(ed&&ed.controlPoints){ if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } const a=dgShape(ed.from), b=dgShape(ed.to); const p1={x:a.x+a.w/2,y:a.y+a.h/2}, p2={x:b.x+b.w/2,y:b.y+b.h/2}; const closest=dgClosestPointOnLine(p1,p2,p); ed.controlPoints[dgAct.idx]={x:Math.round(closest.x),y:Math.round(closest.y)}; renderDiagram(); } }
+  if(dgAct.type==='moveCtrlPt'){ const ed=dg.edges.find(x=>x.id===dgAct.eid); if(ed&&ed.controlPoints){ if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } ed.controlPoints[dgAct.idx]={x:Math.round(p.x),y:Math.round(p.y)}; renderDiagram(); } }
   else if(dgAct.type==='move'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } s.x=Math.max(0,Math.round(dgAct.ox+(p.x-dgAct.sx))); s.y=Math.max(0,Math.round(dgAct.oy+(p.y-dgAct.sy))); dgAct.moved=true; renderDiagram(); }
   else if(dgAct.type==='resize'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } const dx=p.x-dgAct.sx, dy=p.y-dgAct.sy; let x=dgAct.ox,y=dgAct.oy,w=dgAct.ow,ht=dgAct.oh;
     if(dgAct.h===0){ x=dgAct.ox+dx; y=dgAct.oy+dy; w=dgAct.ow-dx; ht=dgAct.oh-dy; }
