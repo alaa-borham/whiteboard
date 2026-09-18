@@ -31,7 +31,7 @@ header a.home:hover{background:rgba(255,255,255,.2)}
 .tab{background:var(--btnbg);border:1.5px solid var(--surface2);color:var(--btnink);border-radius:11px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .15s}
 .tab:hover{border-color:var(--g1)}
 .tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2);box-shadow:0 4px 12px rgba(124,179,66,.3)}
-main{max-width:1500px;margin:14px auto 40px;padding:0 16px;width:100%;flex:1}
+main{max-width:1500px;margin:14px auto 0;padding:0 16px;width:100%;flex:1;display:flex;flex-direction:column}
 .pane{background:var(--pane);border:1px solid var(--line);border-radius:14px;padding:14px}
 /* ── الأزرار */
 .btn{border:none;border-radius:9px;padding:7px 13px;font-family:inherit;font-weight:700;font-size:.84rem;cursor:pointer;transition:all .15s}
@@ -87,7 +87,7 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
 .dg-shape-btn:hover{border-color:var(--g1);background:#f1f7e8}
 .dg-shape-btn svg{width:100%;height:100%;display:block}
 .dg-hint{font-size:.76rem;color:#888;margin:2px 0 8px}
-#dg-wrap{position:relative;direction:ltr;width:100%;height:min(66vh,600px);overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px}
+#dg-wrap{position:relative;direction:ltr;width:100%;height:calc(100vh - 240px);min-height:400px;overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px;flex:1}
 #dg-wrap:fullscreen{width:100vw;height:100vh;border:none;border-radius:0;margin:0;padding:0}
 #dg-svg{display:block;touch-action:none;user-select:none}
 .dg-shape{cursor:grab}
@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-4 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-5 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -1022,7 +1022,7 @@ function setTheme(t){
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{});
-    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a4').map(n=>caches.delete(n)))).catch(()=>{});
+    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a5').map(n=>caches.delete(n)))).catch(()=>{});
   });
 }
 </script>
