@@ -88,6 +88,7 @@ input[type=color]{width:34px;height:30px;border:none;background:none;cursor:poin
 .dg-shape-btn svg{width:100%;height:100%;display:block}
 .dg-hint{font-size:.76rem;color:#888;margin:2px 0 8px}
 #dg-wrap{position:relative;direction:ltr;width:100%;height:min(66vh,600px);overflow:auto;border:1.5px solid #e0e6d8;border-radius:12px;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px}
+#dg-wrap:fullscreen{width:100vw;height:100vh;border:none;border-radius:0;margin:0;padding:0}
 #dg-svg{display:block;touch-action:none;user-select:none}
 .dg-shape{cursor:grab}
 .dg-shape .dg-body{transition:stroke .1s}
@@ -131,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-3 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-4 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -684,11 +685,27 @@ function dgUp(e){
 function dgKey(e){
   if(S.mode!=='diagram') return;
   const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea') return;
+  if((e.ctrlKey||e.metaKey)&&(e.key==='a'||e.key==='A')){ e.preventDefault(); dgSelectAll(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='c'||e.key==='C')){ if(dgSel){ e.preventDefault(); dgCopy(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='v'||e.key==='V')){ if(dgClipboard){ e.preventDefault(); dgPaste(); } return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); dgUndoDg(); return; }
+  if(e.key==='k'||e.key==='K'){ e.preventDefault(); dgToggleFullscreen(); return; }
   if(e.key==='Delete'||e.key==='Backspace'){ if(dgSel||dgSelEdge){ e.preventDefault(); dgDeleteSel(); } }
   else if(dgSel && (e.key==='Enter'||e.key==='F2')){ e.preventDefault(); dgEditText(dgSel); }
+}
+function dgSelectAll(){
+  if(dg.shapes.length===0){ alert('لا توجد أشكال للتحديد.'); return; }
+  dg.shapes.forEach(s=>dgPrintSel.add(s.id)); dgSel=null; dgSelEdge=null; renderDiagram();
+}
+function dgToggleFullscreen(){
+  const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
+  if(document.fullscreenElement||document.webkitFullscreenElement){
+    if(document.exitFullscreen) document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } else {
+    if(wrap.requestFullscreen) wrap.requestFullscreen();
+    else if(wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+  }
 }
 function dgDeleteSel(){
   if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgPrintSel.delete(dgSel); dgSel=null; dgSave(); renderDiagram(); }
@@ -1005,7 +1022,7 @@ function setTheme(t){
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{});
-    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a3').map(n=>caches.delete(n)))).catch(()=>{});
+    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a4').map(n=>caches.delete(n)))).catch(()=>{});
   });
 }
 </script>
