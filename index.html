@@ -443,6 +443,7 @@ let dgClipboard=null, dgScale=1, dgLastClick=null;
 const DG_STYLES=['straight','curved','ortho'], DG_ARROWS=['end','both','none'];
 let dgEdgeDefault={ style:'straight', arrows:'end', dash:false, color:'#555555', width:2 };
 let dgTextColor='#222222';
+let dgMultiSel=new Set();
 let dgPrintSel=new Set();
 let dgBg={ color:'#ffffff', pattern:'dots' };
 const DG_BGCOLORS=['#ffffff','#f6f9f2','#eef4ff','#fff8e1','#fce4ec','#0b1f13','#111111','#1a2733'];
@@ -603,7 +604,8 @@ function renderDiagram(){
   });
   dg.shapes.forEach(s=>{
     const pmark=dgPrintSel.has(s.id)?`<rect fill="none" stroke="#1565c0" stroke-width="2.5" stroke-dasharray="6 3" x="-4" y="-4" width="${s.w+8}" height="${s.h+8}" style="pointer-events:none"/>`:'';
-    h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+pmark+(dgSel===s.id?dgHandles(s):'')+`</g>`;
+    const mmark=dgMultiSel.has(s.id)&&dgSel!==s.id?`<rect fill="none" stroke="#ff9800" stroke-width="2" x="-2" y="-2" width="${s.w+4}" height="${s.h+4}" style="pointer-events:none"/>`:'';
+    h+=`<g class="dg-shape${dgSel===s.id?' sel':''}" data-id="${s.id}" transform="translate(${s.x},${s.y})">`+dgBody(s)+dgTextEl(s)+pmark+mmark+(dgSel===s.id?dgHandles(s):'')+`</g>`;
   });
   if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a){ const fx=dgAct.fromX!=null?dgAct.fromX:a.x+a.w, fy=dgAct.fromY!=null?dgAct.fromY:a.y+a.h/2; h+=`<line x1="${fx}" y1="${fy}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; } }
   svg.innerHTML=h;
@@ -637,26 +639,38 @@ function dgDown(e){
   if(t.classList.contains('dg-port')){ e.preventDefault(); const s=dgShape(dgSel); const fx=(+t.getAttribute('cx'))+(s?s.x:0), fy=(+t.getAttribute('cy'))+(s?s.y:0); dgAct={type:'connect',from:dgSel,cur:p,fromX:fx,fromY:fy}; renderDiagram(); return; }
   const g=t.closest('.dg-shape');
   if(g){ const id=g.dataset.id;
-    if(e.ctrlKey||e.metaKey){ e.preventDefault(); if(dgPrintSel.has(id)) dgPrintSel.delete(id); else dgPrintSel.add(id); renderDiagram(); return; }
+    if(e.ctrlKey||e.metaKey){ e.preventDefault(); if(dgMultiSel.has(id)) dgMultiSel.delete(id); else dgMultiSel.add(id); dgSel=id; dgSelEdge=null; renderDiagram(); return; }
     if(dgConnect){ if(!dgConnectFrom){ dgConnectFrom=id; dgSel=id; dgSelEdge=null; renderDiagram(); } else { dgAddEdge(dgConnectFrom,id); dgConnectFrom=null; dgSetConnect(false); } return; }
     e.preventDefault();
     const now=Date.now();
     if(dgLastClick&&dgLastClick.id===id&&now-dgLastClick.t<350){ dgLastClick=null; dgSel=id; dgSelEdge=null; dgEditText(id); return; }
     dgLastClick={id,t:now};
-    dgSel=id; dgSelEdge=null; const s=dgShape(id);
-    dgAct={type:'move',id,ox:s.x,oy:s.y,sx:p.x,sy:p.y,moved:false,snapped:false}; renderDiagram(); return;
+    if(!dgMultiSel.has(id)) dgMultiSel.clear();
+    dgMultiSel.add(id); dgSel=id; dgSelEdge=null; const s=dgShape(id);
+    dgAct={type:'move',id,ox:s.x,oy:s.y,sx:p.x,sy:p.y,moved:false,snapped:false,multi:Array.from(dgMultiSel)}; renderDiagram(); return;
   }
   const ed=t.closest('.dg-edge-hit')||t.closest('.dg-edge');
   if(ed){ const eid=ed.dataset.eid; const now=Date.now();
     if(dgLastClick&&dgLastClick.id===eid&&now-dgLastClick.t<350){ dgLastClick=null; dgSelEdge=eid; dgSel=null; dgEditEdgeLabel(eid); return; }
     dgLastClick={id:eid,t:now}; dgSelEdge=eid; dgSel=null; renderDiagram(); return; }
-  dgLastClick=null; dgSel=null; dgSelEdge=null; dgPrintSel.clear(); if(dgConnect){ dgConnectFrom=null; } renderDiagram();
+  dgLastClick=null; dgSel=null; dgSelEdge=null; dgMultiSel.clear(); dgPrintSel.clear(); if(dgConnect){ dgConnectFrom=null; } renderDiagram();
 }
 function dgMove(e){
   if(!dgAct) return; const p=dgSvgPos(e);
-  if(dgAct.type==='move'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; }
-    const nx=Math.max(0,Math.min(1600-s.w,Math.round(dgAct.ox+(p.x-dgAct.sx)))), ny=Math.max(0,Math.min(1000-s.h,Math.round(dgAct.oy+(p.y-dgAct.sy))));
-    s.x=nx; s.y=ny; dgAct.moved=true; renderDiagram(); }
+  if(dgAct.type==='move'){
+    if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; }
+    const dx=Math.round(p.x-dgAct.sx), dy=Math.round(p.y-dgAct.sy);
+    if(dgAct.multi && dgAct.multi.length>1){
+      dgAct.multi.forEach(id=>{
+        const s=dgShape(id);
+        if(s){ s.x=Math.max(0,Math.min(1600-s.w,s.x+dx)); s.y=Math.max(0,Math.min(1000-s.h,s.y+dy)); }
+      });
+      dgAct.sx=p.x; dgAct.sy=p.y;
+    } else {
+      const s=dgShape(dgAct.id); if(!s){dgAct=null;return;}
+      s.x=Math.max(0,Math.min(1600-s.w,dgAct.ox+dx)); s.y=Math.max(0,Math.min(1000-s.h,dgAct.oy+dy));
+    }
+    dgAct.moved=true; renderDiagram(); }
   else if(dgAct.type==='resize'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } const dx=p.x-dgAct.sx, dy=p.y-dgAct.sy; let x=dgAct.ox,y=dgAct.oy,w=dgAct.ow,ht=dgAct.oh;
     if(dgAct.h===0){ x=dgAct.ox+dx; y=dgAct.oy+dy; w=dgAct.ow-dx; ht=dgAct.oh-dy; }
     else if(dgAct.h===1){ y=dgAct.oy+dy; w=dgAct.ow+dx; ht=dgAct.oh-dy; }
@@ -709,7 +723,14 @@ function dgKey(e){
   else if(dgSel && (e.key==='Enter'||e.key==='F2')){ e.preventDefault(); dgEditText(dgSel); }
 }
 function dgDeleteSel(){
-  if(dgSel){ dgSnapshot(); dg.shapes=dg.shapes.filter(s=>s.id!==dgSel); dg.edges=dg.edges.filter(e=>e.from!==dgSel&&e.to!==dgSel); dgPrintSel.delete(dgSel); dgSel=null; dgSave(); renderDiagram(); }
+  if(dgSel){
+    dgSnapshot();
+    const toDelete=new Set(dgMultiSel.size>1 ? dgMultiSel : [dgSel]);
+    dg.shapes=dg.shapes.filter(s=>!toDelete.has(s.id));
+    dg.edges=dg.edges.filter(e=>!toDelete.has(e.from)&&!toDelete.has(e.to));
+    toDelete.forEach(id=>dgPrintSel.delete(id));
+    dgMultiSel.clear(); dgSel=null; dgSave(); renderDiagram();
+  }
   else if(dgSelEdge){ dgSnapshot(); dg.edges=dg.edges.filter(e=>e.id!==dgSelEdge); dgSelEdge=null; dgSave(); renderDiagram(); }
 }
 function dgEditSelText(){ if(dgSel) dgEditText(dgSel); else if(dgSelEdge) dgEditEdgeLabel(dgSelEdge); else alert('اختر شكلاً أو سهماً أولاً.'); }
