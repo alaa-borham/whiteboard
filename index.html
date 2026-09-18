@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v24 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v25 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -680,16 +680,14 @@ function dgMove(e){
       Object.keys(dgAct.origins).forEach(id=>{
         const s=dgShape(id);
         if(s){
-          let nx=dgAct.origins[id].x+dx, ny=dgAct.origins[id].y+dy;
-          s.x=Math.round(Math.max(-500,Math.min(2100,nx)));
-          s.y=Math.round(Math.max(-500,Math.min(1500,ny)));
+          s.x=Math.round(dgAct.origins[id].x+dx);
+          s.y=Math.round(dgAct.origins[id].y+dy);
         }
       });
     } else {
       const s=dgShape(dgAct.id); if(!s){dgAct=null;return;}
-      let nx=dgAct.ox+dx, ny=dgAct.oy+dy;
-      s.x=Math.round(Math.max(-500,Math.min(2100,nx)));
-      s.y=Math.round(Math.max(-500,Math.min(1500,ny)));
+      s.x=Math.round(dgAct.ox+dx);
+      s.y=Math.round(dgAct.oy+dy);
     }
     dgAct.moved=true; renderDiagram(); }
   else if(dgAct.type==='resize'){ const s=dgShape(dgAct.id); if(!s){dgAct=null;return;} if(!dgAct.snapped){ dgSnapshot(); dgAct.snapped=true; } const dx=p.x-dgAct.sx, dy=p.y-dgAct.sy; let x=dgAct.ox,y=dgAct.oy,w=dgAct.ow,ht=dgAct.oh;
