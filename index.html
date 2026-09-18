@@ -497,7 +497,7 @@ function dgAddShape(t){
   const base=40 + (dgAddIdx%6)*26;
   const x=Math.round((wrap.scrollLeft||0)+60+base), y=Math.round((wrap.scrollTop||0)+50+base);
   dgAddIdx++;
-  dg.shapes.push({ id:uid(), type:t, x, y, w, h, text:'', fill:dgFill, stroke:dgStroke });
+  dg.shapes.push({ id:uid(), type:t, x, y, w, h, text:'', fill:dgFill, stroke:dgStroke, textColor:dgTextColor });
   dgSel=dg.shapes[dg.shapes.length-1].id; dgSelEdge=null;
   dgSave(); renderDiagram();
 }
@@ -774,9 +774,10 @@ function dgJpegToPdf(dataUrl, iw, ih){
   for(let n=1;n<=5;n++) x+=String(off[n]).padStart(10,'0')+' 00000 n \n';
   push(x); push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF');
   const url=URL.createObjectURL(new Blob(parts,{type:'application/pdf'}));
-  dgDL(url,'diagram-'+new Date().toISOString().slice(0,10)+'.pdf'); setTimeout(()=>URL.revokeObjectURL(url),3000);
+  dgDL(url,'diagram-'+new Date().toISOString().slice(0,10)+'.pdf'); setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-// ── استيراد صورة كعنصر في المخطط (يُحرَّك ويُغيَّر حجمه مثل الأشكال)
+// استيراد صورة كعنصر في المخطط (يُحرَّك ويُغيَّر حجمه مثل الأشكال)
+// ⚠️ تحذير: الصور الكبيرة قد تتجاوز حد localStorage (5-10MB) — استخدم صوراً صغيرة فقط
 function dgAddImage(inp){
   const f=inp.files&&inp.files[0]; if(!f){ return; }
   if(!/^image\//.test(f.type||'')){ alert('اختر ملف صورة.'); inp.value=''; return; }
@@ -813,7 +814,7 @@ function dgRemoveBg(){
     // تعبئة فيضية من الحواف: تُزال الخلفية الخارجية المتصلة بالأطراف فقط،
     // ويبقى داخل التصميم (ولو بنفس اللون) سليماً — فيقبل التعبئة بالألوان
     const tol=62, tol2=tol*tol;
-    const near=i=>{ const dr=d[i]-br, dgn=d[i+1]-bg, db=d[i+2]-bb; return dr*dr+dgn*dgn+db*db < tol2; };
+    const near=i=>{ const dr=d[i]-br, dg=d[i+1]-bg, db=d[i+2]-bb; return dr*dr+dg*dg+db*db < tol2; };
     const visited=new Uint8Array(W*H); const stack=[];
     for(let xx=0; xx<W; xx++){ stack.push(xx, (H-1)*W+xx); }
     for(let yy=0; yy<H; yy++){ stack.push(yy*W, yy*W+W-1); }
@@ -1004,8 +1005,7 @@ function setTheme(t){
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{});
-    // فرض مسح جميع النسخ القديمة من الـ cache
-    caches.keys().then(names=>{ names.forEach(name=>{ if(name!=='wb-a3') caches.delete(name); }); });
+    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a3').map(n=>caches.delete(n)))).catch(()=>{});
   });
 }
 </script>
