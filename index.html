@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-16 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-17 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -617,7 +617,8 @@ function renderDiagram(){
   svg.innerHTML=h;
   if(!dgAct){ let maxX=1600, maxY=1000;
   if(dg.shapes.length>0){ dg.shapes.forEach(s=>{ maxX=Math.max(maxX,s.x+s.w+100); maxY=Math.max(maxY,s.y+s.h+100); }); dg.edges.forEach(e=>{ const g=dgEdgeGeom(e); if(g){ maxX=Math.max(maxX,g.mx+100); maxY=Math.max(maxY,g.my+100); } }); }
-  svg.setAttribute('width',Math.round(maxX)); svg.setAttribute('height',Math.round(maxY)); svg.setAttribute('viewBox',`0 0 ${Math.round(maxX)} ${Math.round(maxY)}`); }
+  const curW=parseInt(svg.getAttribute('width'))||1600, curH=parseInt(svg.getAttribute('height'))||1000;
+  if(maxX!==curW||maxY!==curH){ svg.setAttribute('width',Math.round(maxX)); svg.setAttribute('height',Math.round(maxY)); svg.setAttribute('viewBox',`0 0 ${Math.round(maxX)} ${Math.round(maxY)}`); } }
   dgSyncControls();
 }
 function dgMarkSwatch(sel,attr,val){ document.querySelectorAll(sel+' .swatch').forEach(x=>x.classList.toggle('sel', x.dataset[attr]===val)); }
