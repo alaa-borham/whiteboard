@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v37 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v38 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -270,6 +270,82 @@ const uid = ()=> 'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,
 const SWATCHES = ['#1565c0','#e53935','#2e7d32','#f9a825','#6a1b9a','#00838f','#111111','#ff6f00'];
 const S = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, last:null, undoStack:[] };
 
+// ═══ إدارة التصاميم المتعددة ═══
+const DM = {
+  activeId: null,
+  list: [],
+  init(){
+    try { this.list = JSON.parse(LS.get('designs_list', '[]')); } catch(_) {}
+    if (!this.list.length) {
+      const id = uid();
+      this.list = [{ id, name: 'تصميمي الأول', created: new Date().toISOString() }];
+      this.save();
+    }
+    this.activeId = LS.get('active_design', this.list[0].id);
+    this.render();
+  },
+  save(){ LS.set('designs_list', JSON.stringify(this.list)); },
+  key(type){ return `design_${this.activeId}_${type}`; },
+  get(k,d){ return LS.get(this.key(k), d); },
+  set(k,v){ LS.set(this.key(k), v); },
+  create(name){
+    const id = uid();
+    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: new Date().toISOString() });
+    this.save();
+    this.switch(id);
+  },
+  delete(id){
+    if(this.list.length === 1){ alert('يجب أن يكون هناك تصميم واحد على الأقل!'); return; }
+    if(!confirm(`حذف التصميم "${this.list.find(d=>d.id===id)?.name || id}"؟`)) return;
+    this.list = this.list.filter(d => d.id !== id);
+    this.save();
+    if(this.activeId === id) this.switch(this.list[0].id);
+  },
+  switch(id){
+    if(!this.list.some(d => d.id === id)) return;
+    this.activeId = id;
+    LS.set('active_design', id);
+    this.render();
+    if(S.mode) setMode(S.mode);
+  },
+  render(){
+    const tabs = document.querySelector('.tabs');
+    let designTabs = tabs.querySelectorAll('.tab-design');
+    designTabs.forEach(t => t.remove());
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'tab';
+    addBtn.textContent = '➕ جديد';
+    addBtn.style.minWidth = '80px';
+    addBtn.onclick = () => {
+      const name = prompt('اسم التصميم:');
+      if(name) this.create(name);
+    };
+
+    this.list.forEach(design => {
+      const btn = document.createElement('button');
+      btn.className = 'tab tab-design' + (design.id === this.activeId ? ' active' : '');
+      btn.dataset.id = design.id;
+      btn.style.position = 'relative';
+      btn.innerHTML = `${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
+
+      btn.onclick = () => this.switch(design.id);
+
+      const del = document.createElement('span');
+      del.style.cssText = 'position:absolute;top:1px;right:1px;width:16px;height:16px;background:rgba(0,0,0,.2);border-radius:3px;font-size:.65rem;line-height:1.6;cursor:pointer;opacity:.6';
+      del.textContent = '✕';
+      del.onclick = (e) => { e.stopPropagation(); this.delete(design.id); };
+      btn.appendChild(del);
+
+      tabs.insertBefore(btn, addBtn);
+    });
+
+    tabs.appendChild(addBtn);
+  }
+};
+
+DM.init();
+
 // ═══ تبديل الأوضاع ═══
 function setMode(m){
   S.mode = m;
@@ -298,9 +374,9 @@ function toggleEraser(){
 function pos(e){ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) }; }
 function clearCtx(){ const c=ctx(); c.fillStyle='#fff'; c.fillRect(0,0,cv.width,cv.height); }
 function snapshot(){ S.undoStack.push(cv.toDataURL('image/png')); if(S.undoStack.length>20) S.undoStack.shift(); }
-function saveCanvas(){ try{ LS.set('canvas', cv.toDataURL('image/png')); }catch(_){} }
+function saveCanvas(){ try{ DM.set('canvas', cv.toDataURL('image/png')); }catch(_){} }
 function loadCanvas(){
-  const d=LS.get('canvas','');
+  const d=DM.get('canvas','');
   if(d){ const img=new Image(); img.onload=()=>{ clearCtx(); ctx().drawImage(img,0,0,cv.width,cv.height); }; img.src=d; }
   else clearCtx();
 }
@@ -322,14 +398,14 @@ function savePng(){ const a=document.createElement('a'); a.download='whiteboard-
 /* ═══ لوحة المهام (Kanban) ═══ */
 let board=null, dragCard=null;
 function loadBoard(){
-  try{ const d=JSON.parse(LS.get('kanban','')); if(d&&d.cols) return d; }catch(_){}
+  try{ const d=JSON.parse(DM.get('kanban','')); if(d&&d.cols) return d; }catch(_){}
   return { cols:[
     { id:uid(), title:'قيد الانتظار', cards:[] },
     { id:uid(), title:'جاري التنفيذ', cards:[] },
     { id:uid(), title:'منجز',         cards:[] },
   ]};
 }
-function saveBoard(){ LS.set('kanban', JSON.stringify(board)); }
+function saveBoard(){ DM.set('kanban', JSON.stringify(board)); }
 function renderBoard(){
   board = loadBoard();
   const wrap=document.getElementById('board'); wrap.innerHTML='';
@@ -374,12 +450,12 @@ function dropCard(destId){
 }
 function addColumn(){ board.cols.push({id:uid(),title:'عمود جديد',cards:[]}); saveBoard(); renderBoard(); }
 function delColumn(colId){ const c=board.cols.find(x=>x.id===colId); if(c&&c.cards.length&&!confirm('حذف العمود «'+c.title+'» وكل بطاقاته؟')) return; board.cols=board.cols.filter(x=>x.id!==colId); saveBoard(); renderBoard(); }
-function resetBoard(){ if(!confirm('إعادة ضبط لوحة المهام إلى الأعمدة الافتراضية؟ (تُحذف كل البطاقات)')) return; LS.del('kanban'); renderBoard(); }
+function resetBoard(){ if(!confirm('إعادة ضبط لوحة المهام إلى الأعمدة الافتراضية؟ (تُحذف كل البطاقات)')) return; DM.set('kanban', ''); renderBoard(); }
 
 /* ═══ الملاحظات اللاصقة ═══ */
 let notes=null;
-function loadNotes(){ try{ const d=JSON.parse(LS.get('notes','')); if(Array.isArray(d)) return d; }catch(_){} return []; }
-function saveNotes(){ LS.set('notes', JSON.stringify(notes)); }
+function loadNotes(){ try{ const d=JSON.parse(DM.get('notes','')); if(Array.isArray(d)) return d; }catch(_){} return []; }
+function saveNotes(){ DM.set('notes', JSON.stringify(notes)); }
 function renderNotes(){
   notes=loadNotes();
   const bd=document.getElementById('notes-board'); bd.innerHTML='';
@@ -419,7 +495,7 @@ function addNote(color){
   notes.push({ id:uid(), text:'', color:color, x:Math.round(Math.random()*Math.max(bw-200,20))+10, y:Math.round(Math.random()*Math.max(bh-180,20))+10 });
   saveNotes(); renderNotes();
 }
-function clearNotes(){ if(!confirm('حذف كل الملاحظات؟')) return; notes=[]; saveNotes(); renderNotes(); }
+function clearNotes(){ if(!confirm('حذف كل الملاحظات من هذا التصميم؟')) return; notes=[]; saveNotes(); renderNotes(); }
 
 /* ═══ المخططات (Diagrams) ═══ */
 const DG_TYPES = [
@@ -451,8 +527,8 @@ let dgBg={ color:'#ffffff', pattern:'dots' };
 const DG_BGCOLORS=['#ffffff','#f6f9f2','#eef4ff','#fff8e1','#fce4ec','#0b1f13','#111111','#1a2733'];
 
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function dgLoad(){ try{ const d=JSON.parse(LS.get('diagram','')); if(d&&d.shapes) return d; }catch(_){} return { shapes:[], edges:[] }; }
-function dgSave(){ LS.set('diagram', JSON.stringify(dg)); }
+function dgLoad(){ try{ const d=JSON.parse(DM.get('diagram','')); if(d&&d.shapes) return d; }catch(_){} return { shapes:[], edges:[] }; }
+function dgSave(){ DM.set('diagram', JSON.stringify(dg)); }
 function dgSnapshot(){ dgUndoStack.push(JSON.stringify(dg)); if(dgUndoStack.length>40) dgUndoStack.shift(); }
 function dgUndoDg(){ if(!dgUndoStack.length) return; dg=JSON.parse(dgUndoStack.pop()); dgSel=dgSelEdge=null; dgSave(); renderDiagram(); }
 function dgShape(id){ return dg.shapes.find(s=>s.id===id); }
@@ -924,8 +1000,8 @@ function dgTintImage(color){
   dgMultiplyTint(s.imgBase, color, out=>{ s.src=out; dgSave(); renderDiagram(); });
 }
 // ── خلفية البورد: لون + نمط (نقاط/مربعات/بدون)
-function dgLoadBg(){ try{ const d=JSON.parse(LS.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
-function dgSaveBg(){ LS.set('dgbg', JSON.stringify(dgBg)); }
+function dgLoadBg(){ try{ const d=JSON.parse(DM.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
+function dgSaveBg(){ DM.set('dgbg', JSON.stringify(dgBg)); }
 function dgApplyBg(){
   const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
   wrap.style.background=dgBg.color;
