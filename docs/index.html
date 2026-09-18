@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-30 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-31 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -267,7 +267,7 @@ const LS = {
 };
 const uid = ()=> 'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const SWATCHES = ['#1565c0','#e53935','#2e7d32','#f9a825','#6a1b9a','#00838f','#111111','#ff6f00'];
-const S = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, last:null, undoStack:[] };
+var S = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, last:null, undoStack:[] };
 
 // ═══ تبديل الأوضاع ═══
 function setMode(m){
@@ -440,7 +440,7 @@ let dg = { shapes:[], edges:[] };
 let dgSel=null, dgSelEdge=null, dgConnect=false, dgConnectFrom=null, dgAct=null, dgInited=false, dgAddIdx=0, dgEditPoint=null;
 let dgFill='#ffffff', dgStroke='#333333';
 let dgUndoStack=[];
-let dgClipboard=null, dgScale=1, dgLastClick=null;
+var dgClipboard=null, dgScale=1, dgLastClick=null;
 const DG_STYLES=['straight','curved','ortho'], DG_ARROWS=['end','both','none'];
 let dgEdgeDefault={ style:'straight', arrows:'end', dash:false, color:'#555555', width:2 };
 let dgTextColor='#222222';
