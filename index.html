@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v38 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v39 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -228,6 +228,11 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
       </div>
       <!-- (٢) شكل محدَّد → ألوانه -->
       <div id="dg-ctx-shape" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-outline" id="dg-copy-btn" onclick="dgCopyMultiple()" title="نسخ الأشكال المحددة">📋 نسخ</button>
+        <div class="sep"></div>
+        <button class="btn btn-outline" id="dg-paste-btn" onclick="dgPasteMultiple()" title="لصق في التصميم الحالي">📌 لصق</button>
+        <div id="dg-paste-designs" style="display:inline-flex;gap:4px"></div>
+        <div class="sep"></div>
         <span class="tool-lbl">تعبئة</span>
         <div class="swatches" id="dg-fills"></div>
         <span class="tool-lbl">حدود</span>
@@ -698,7 +703,7 @@ function dgSyncControls(){
     sh.style.display = dgSel?'flex':'none';
     eg.style.display = dgSelEdge?'flex':'none';
   }
-  if(dgSel){ const s=dgShape(dgSel); if(s){ dgMarkSwatch('#dg-fills','f',s.fill||'#ffffff'); dgMarkSwatch('#dg-strokes','s',s.stroke||'#333333'); dgMarkSwatch('#dg-textcolors','tc',s.textColor||'#222222'); } }
+  if(dgSel){ const s=dgShape(dgSel); if(s){ dgMarkSwatch('#dg-fills','f',s.fill||'#ffffff'); dgMarkSwatch('#dg-strokes','s',s.stroke||'#333333'); dgMarkSwatch('#dg-textcolors','tc',s.textColor||'#222222'); dgUpdatePasteDesigns(); } }
   if(dgSelEdge){ const e=dg.edges.find(x=>x.id===dgSelEdge); if(e){ dgEdgeDefault.style=e.style||'straight'; dgEdgeDefault.arrows=e.arrows||'end'; dgEdgeDefault.dash=!!e.dash; dgEdgeDefault.width=e.width||2; dgEdgeDefault.color=e.color||'#555555'; dgUpdateEdgeButtons(); dgMarkSwatch('#dg-edgecolors','ec',dgEdgeDefault.color); } }
 }
 
@@ -1085,7 +1090,79 @@ function dgUpdateEdgeButtons(){
 }
 // ── نسخ/لصق الأشكال
 function dgCopy(){ if(!dgSel) return; dgClipboard=JSON.parse(JSON.stringify(dgShape(dgSel))); }
-function dgPaste(){ if(!dgClipboard) return; dgSnapshot(); const s=JSON.parse(JSON.stringify(dgClipboard)); s.id=uid(); s.x+=26; s.y+=26; dg.shapes.push(s); dgSel=s.id; dgSelEdge=null; dgSave(); renderDiagram(); }
+function dgCopyMultiple(){
+  if(dgMultiSel.size === 0 && !dgSel) return;
+  const ids = dgMultiSel.size > 0 ? Array.from(dgMultiSel) : [dgSel];
+  dgClipboard = ids.map(id => JSON.parse(JSON.stringify(dgShape(id))));
+  alert(`✅ تم نسخ ${ids.length} ${ids.length === 1 ? 'شكل' : 'أشكال'}`);
+}
+function dgPaste(){
+  if(!dgClipboard) return;
+  dgSnapshot();
+  if(Array.isArray(dgClipboard)) {
+    dgPasteMultiple();
+  } else {
+    const s=JSON.parse(JSON.stringify(dgClipboard));
+    s.id=uid(); s.x+=26; s.y+=26;
+    dg.shapes.push(s);
+    dgSel=s.id;
+    dgSelEdge=null;
+    dgSave();
+    renderDiagram();
+  }
+}
+function dgPasteMultiple(){
+  if(!dgClipboard || !Array.isArray(dgClipboard)) return;
+  dgSnapshot();
+  dgClipboard.forEach((original, idx) => {
+    const s = JSON.parse(JSON.stringify(original));
+    s.id = uid();
+    s.x += idx * 20;
+    s.y += idx * 20;
+    dg.shapes.push(s);
+  });
+  dgSel = null;
+  dgSelEdge = null;
+  dgMultiSel.clear();
+  dgSave();
+  renderDiagram();
+}
+function dgUpdatePasteDesigns(){
+  const container = document.getElementById('dg-paste-designs');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!dgClipboard) return;
+  DM.list.forEach(design => {
+    if(design.id === DM.activeId) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline';
+    btn.textContent = `↪️ ${design.name.substring(0, 8)}`;
+    btn.title = `لصق في "${design.name}"`;
+    btn.onclick = () => dgPasteToDesign(design.id);
+    container.appendChild(btn);
+  });
+}
+function dgPasteToDesign(targetId){
+  if(!dgClipboard || !Array.isArray(dgClipboard)) return;
+  if(targetId === DM.activeId) { dgPasteMultiple(); return; }
+  const currentData = DM.get('diagram', '{}');
+  const targetData = LS.get(`design_${targetId}_diagram`, '{}');
+  try {
+    let sourceDiagram = currentData ? JSON.parse(currentData) : { shapes:[], edges:[] };
+    let targetDiagram = targetData ? JSON.parse(targetData) : { shapes:[], edges:[] };
+    dgClipboard.forEach((original, idx) => {
+      const s = JSON.parse(JSON.stringify(original));
+      s.id = uid();
+      s.x += idx * 20;
+      s.y += idx * 20;
+      targetDiagram.shapes.push(s);
+    });
+    LS.set(`design_${targetId}_diagram`, JSON.stringify(targetDiagram));
+    alert(`✅ تم لصق ${dgClipboard.length} ${dgClipboard.length === 1 ? 'شكل' : 'أشكال'} في التصميم الآخر`);
+  } catch(_) {
+    alert('❌ خطأ في نسخ الأشكال');
+  }
+}
 // ── حفظ/استيراد المخطط كملف JSON
 function dgSaveFile(){ const blob=new Blob([JSON.stringify(dg,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='diagram-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
 function dgImportFile(inp){ const f=inp.files&&inp.files[0]; if(!f){ return; } const rd=new FileReader(); rd.onload=()=>{ try{ const d=JSON.parse(rd.result); if(d&&Array.isArray(d.shapes)&&Array.isArray(d.edges)){ dgSnapshot(); dg=d; dgSel=dgSelEdge=null; dgSave(); renderDiagram(); } else alert('ملف غير صالح.'); }catch(_){ alert('تعذّر قراءة الملف.'); } inp.value=''; }; rd.readAsText(f); }
