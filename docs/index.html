@@ -121,6 +121,30 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
   #dg-preview .dgpv-body{overflow:visible;background:#fff;padding:0}
   #dg-preview .dgpv-body img{box-shadow:none;max-width:100%}
 }
+/* ── مساحات العمل المتعددة */
+.workspaces-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--line);overflow-x:auto;flex-wrap:wrap}
+.workspace-tab{background:var(--pane);border:1.5px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:600;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.workspace-tab:hover{border-color:var(--g1);box-shadow:0 2px 4px rgba(124,179,66,.15)}
+.workspace-tab.active{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2)}
+.workspace-tab .close{background:none;border:none;color:inherit;cursor:pointer;font-size:.85rem;padding:0 2px;opacity:.7;margin-inline-start:4px}
+.workspace-tab .close:hover{opacity:1}
+.ws-add-btn{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:.9rem;transition:all .15s}
+.ws-add-btn:hover{filter:brightness(1.1)}
+.ws-menu{position:absolute;background:var(--pane);border:1.5px solid var(--line);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;min-width:180px;top:100%}
+.ws-menu-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);transition:all .15s;display:flex;align-items:center;gap:8px}
+.ws-menu-item:last-child{border-bottom:none}
+.ws-menu-item:hover{background:var(--surface2);color:var(--g1)}
+.ws-menu-item.danger:hover{color:#e53935}
+.ws-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300}
+.ws-modal.show{display:flex}
+.ws-modal-content{background:var(--pane);border-radius:12px;padding:20px;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.ws-modal h2{margin-bottom:16px;color:var(--ink)}
+.ws-modal input{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:.95rem;margin-bottom:16px}
+.ws-modal input:focus{outline:none;border-color:var(--g1);box-shadow:0 0 0 3px rgba(124,179,66,.1)}
+.ws-modal-buttons{display:flex;gap:10px;justify-content:flex-end}
+.ws-modal-buttons button{padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:700}
+.ws-modal-buttons .cancel{background:var(--surface2);color:var(--ink)}
+.ws-modal-buttons .confirm{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff}
 </style>
 </head>
 <body>
@@ -132,8 +156,27 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-31 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-32 · 2026-09-18</span>
 </header>
+
+<!-- مساحات العمل المتعددة -->
+<div class="workspaces-bar">
+  <span style="font-size:.85rem;font-weight:700;color:var(--muted);white-space:nowrap">📁 مساحات العمل:</span>
+  <div id="workspaces-list" style="display:flex;gap:8px;flex:1;overflow-x:auto"></div>
+  <button class="ws-add-btn" onclick="wsShowNewModal()">➕ جديدة</button>
+</div>
+
+<!-- المودال لإنشاء/تعديل مساحة -->
+<div class="ws-modal" id="ws-modal">
+  <div class="ws-modal-content">
+    <h2 id="ws-modal-title">مساحة عمل جديدة</h2>
+    <input type="text" id="ws-modal-input" placeholder="اسم المساحة..." maxlength="20">
+    <div class="ws-modal-buttons">
+      <button class="cancel" onclick="wsCloseModal()">إلغاء</button>
+      <button class="confirm" onclick="wsConfirmModal()">حفظ</button>
+    </div>
+  </div>
+</div>
 
 <div class="tabs">
   <button class="tab active" data-mode="draw"  onclick="setMode('draw')">✏️ رسم حر</button>
@@ -268,6 +311,142 @@ const LS = {
 const uid = ()=> 'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const SWATCHES = ['#1565c0','#e53935','#2e7d32','#f9a825','#6a1b9a','#00838f','#111111','#ff6f00'];
 var S = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, last:null, undoStack:[] };
+
+// ═══ نظام مساحات العمل المتعددة ═══
+var WORKSPACES = {
+  list: [],
+  current: null,
+  modalMode: 'new',
+  init(){
+    this.list = JSON.parse(LS.get('workspaces', '[]'));
+    this.current = LS.get('currentWorkspace', null);
+    if(this.list.length===0) this.createNew('المساحة 1');
+    if(!this.list.find(w=>w.id===this.current)) this.current = this.list[0]?.id;
+    this.render();
+    this.load();
+  },
+  createNew(name){
+    const ws = { id:uid(), name, created:Date.now(), data:{canvas:'',tasks:{},notes:{},diagram:{}} };
+    this.list.push(ws);
+    this.save();
+    this.switchTo(ws.id);
+  },
+  rename(id, newName){
+    const ws = this.list.find(w=>w.id===id);
+    if(ws) ws.name = newName;
+    this.save();
+    this.render();
+  },
+  delete(id){
+    if(this.list.length===1) return;
+    this.list = this.list.filter(w=>w.id!==id);
+    if(this.current===id) this.current = this.list[0]?.id;
+    this.save();
+    this.load();
+    this.render();
+  },
+  switchTo(id){
+    if(this.current===id) return;
+    this.current = id;
+    this.save();
+    this.load();
+    this.render();
+  },
+  save(){
+    const ws = this.list.find(w=>w.id===this.current);
+    if(ws) ws.data = this.exportData();
+    LS.set('workspaces', JSON.stringify(this.list));
+    LS.set('currentWorkspace', this.current);
+  },
+  load(){
+    const ws = this.list.find(w=>w.id===this.current);
+    if(!ws) return;
+    this.importData(ws.data);
+  },
+  exportData(){
+    return {
+      canvas: document.getElementById('canvas')?.toDataURL('image/png') || '',
+      tasks: JSON.stringify(window.TASKS || []),
+      notes: JSON.stringify(window.NOTES || []),
+      diagram: JSON.stringify({shapes:dg?.shapes||[],edges:dg?.edges||[]})
+    };
+  },
+  importData(data){
+    if(!data) return;
+    if(data.canvas) {
+      const ctx = document.getElementById('canvas')?.getContext('2d');
+      if(ctx) {
+        const img = new Image();
+        img.onload = ()=>ctx.drawImage(img,0,0);
+        img.src = data.canvas;
+      }
+    }
+    if(data.tasks) try { window.TASKS = JSON.parse(data.tasks)||[]; } catch(e){}
+    if(data.notes) try { window.NOTES = JSON.parse(data.notes)||[]; } catch(e){}
+    if(data.diagram) try { const d = JSON.parse(data.diagram); if(d) { dg.shapes = d.shapes||[]; dg.edges = d.edges||[]; renderDiagram(); } } catch(e){}
+  },
+  render(){
+    const list = document.getElementById('workspaces-list');
+    if(!list) return;
+    list.innerHTML = '';
+    this.list.forEach(ws=>{
+      const tab = document.createElement('div');
+      tab.className = 'workspace-tab' + (ws.id===this.current?' active':'');
+      tab.innerHTML = `<span onclick="WORKSPACES.switchTo('${ws.id}')" style="cursor:pointer">${ws.name}</span>
+        <button class="close" onclick="event.stopPropagation();WORKSPACES.showMenu('${ws.id}')">⋮</button>`;
+      list.appendChild(tab);
+    });
+  },
+  showMenu(id){
+    const menu = document.createElement('div');
+    menu.className = 'ws-menu';
+    menu.innerHTML = `
+      <div class="ws-menu-item" onclick="WORKSPACES.showRenameModal('${id}')">✏️ إعادة تسمية</div>
+      <div class="ws-menu-item danger" onclick="WORKSPACES.delete('${id}')">🗑️ حذف</div>
+    `;
+    document.body.appendChild(menu);
+    const tab = event.target.closest('.workspace-tab');
+    const rect = tab.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    document.addEventListener('click', ()=>menu.remove(), {once:true});
+  },
+  showNewModal(){
+    WORKSPACES.modalMode = 'new';
+    document.getElementById('ws-modal-title').textContent = 'مساحة عمل جديدة';
+    document.getElementById('ws-modal-input').value = '';
+    document.getElementById('ws-modal').classList.add('show');
+    document.getElementById('ws-modal-input').focus();
+  },
+  showRenameModal(id){
+    const ws = WORKSPACES.list.find(w=>w.id===id);
+    WORKSPACES.modalMode = 'rename';
+    WORKSPACES.modalMode = {type:'rename', id};
+    document.getElementById('ws-modal-title').textContent = 'إعادة تسمية المساحة';
+    document.getElementById('ws-modal-input').value = ws.name;
+    document.getElementById('ws-modal').classList.add('show');
+    document.getElementById('ws-modal-input').focus();
+  },
+  closeModal(){
+    document.getElementById('ws-modal').classList.remove('show');
+  },
+  confirmModal(){
+    const input = document.getElementById('ws-modal-input');
+    const name = input.value.trim();
+    if(!name) return;
+    if(WORKSPACES.modalMode === 'new') {
+      WORKSPACES.createNew(name);
+    } else if(typeof WORKSPACES.modalMode === 'object' && WORKSPACES.modalMode.type === 'rename') {
+      WORKSPACES.rename(WORKSPACES.modalMode.id, name);
+    }
+    WORKSPACES.closeModal();
+  }
+};
+
+function wsShowNewModal(){ WORKSPACES.showNewModal(); }
+function wsCloseModal(){ WORKSPACES.closeModal(); }
+function wsConfirmModal(){ WORKSPACES.confirmModal(); }
 
 // ═══ تبديل الأوضاع ═══
 function setMode(m){
@@ -1109,12 +1288,14 @@ function dgInit(){
 
 /* ═══ تهيئة ═══ */
 (function init(){
+  WORKSPACES.init();
   const sw=document.getElementById('swatches');
   SWATCHES.forEach((c,i)=>{ const b=document.createElement('div'); b.className='swatch'+(i===0?' sel':''); b.style.background=c; b.dataset.color=c; b.onclick=()=>pickColor(c); sw.appendChild(b); });
   clearCtx();
   dgInit();
   setTheme(LS.get('theme','light'));
   setMode(LS.get('mode','draw'));
+  document.getElementById('ws-modal-input').addEventListener('keypress', e=>{ if(e.key==='Enter') wsConfirmModal(); });
 })();
 function setTheme(t){
   document.body.classList.remove('theme-dark','theme-gray');
