@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v39 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v40 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -283,9 +283,13 @@ const DM = {
     try { this.list = JSON.parse(LS.get('designs_list', '[]')); } catch(_) {}
     if (!this.list.length) {
       const id = uid();
-      this.list = [{ id, name: 'تصميمي الأول', created: new Date().toISOString() }];
+      this.list = [{ id, name: 'تصميمي الأول', created: new Date().toISOString(), color: '#7cb342' }];
       this.save();
     }
+    // إضافة لون للتصاميم القديمة التي لا تملك لون
+    const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f', '#7cb342'];
+    this.list.forEach((d, i) => { if(!d.color) d.color = colors[i % colors.length]; });
+    this.save();
     this.activeId = LS.get('active_design', this.list[0].id);
     this.render();
   },
@@ -295,9 +299,43 @@ const DM = {
   set(k,v){ LS.set(this.key(k), v); },
   create(name){
     const id = uid();
-    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: new Date().toISOString() });
+    const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f'];
+    const color = colors[this.list.length % colors.length];
+    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: new Date().toISOString(), color });
     this.save();
     this.switch(id);
+  },
+  setColor(id, color){
+    const design = this.list.find(d => d.id === id);
+    if(design) {
+      design.color = color;
+      this.save();
+      this.render();
+    }
+  },
+  showColorPicker(id){
+    const design = this.list.find(d => d.id === id);
+    if(!design) return;
+    const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f', '#7cb342', '#ff6f00', '#c2185b', '#00897b'];
+    let html = '<div style="display:grid;grid-template-columns:repeat(5,40px);gap:6px">';
+    colors.forEach(c => {
+      html += `<div style="width:40px;height:40px;background:${c};border-radius:6px;cursor:pointer;border:${design.color===c?'3px solid #333':'1px solid #ccc'}" onclick="DM.setColor('${id}','${c}')"></div>`;
+    });
+    html += '</div>';
+
+    const colorDiv = document.createElement('div');
+    colorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:16px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px';
+    colorDiv.innerHTML = html;
+    document.body.appendChild(colorDiv);
+
+    setTimeout(() => {
+      document.addEventListener('click', function closeColorPicker(e) {
+        if(!colorDiv.contains(e.target)) {
+          colorDiv.remove();
+          document.removeEventListener('click', closeColorPicker);
+        }
+      });
+    }, 0);
   },
   delete(id){
     if(this.list.length === 1){ alert('يجب أن يكون هناك تصميم واحد على الأقل!'); return; }
@@ -332,10 +370,22 @@ const DM = {
       btn.className = 'tab tab-design' + (design.id === this.activeId ? ' active' : '');
       btn.dataset.id = design.id;
       btn.style.position = 'relative';
+      btn.style.borderTopWidth = '3px';
+      btn.style.borderTopStyle = 'solid';
+      btn.style.borderTopColor = design.color || '#7cb342';
       btn.innerHTML = `${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
 
       btn.onclick = () => this.switch(design.id);
 
+      // زر تغيير اللون
+      const colorBtn = document.createElement('span');
+      colorBtn.style.cssText = 'position:absolute;top:1px;left:1px;width:16px;height:16px;background:'+
+        (design.color || '#7cb342')+';border-radius:3px;cursor:pointer;opacity:.8;border:1px solid rgba(255,255,255,.3)';
+      colorBtn.title = 'تغيير لون التبويب';
+      colorBtn.onclick = (e) => { e.stopPropagation(); this.showColorPicker(design.id); };
+      btn.appendChild(colorBtn);
+
+      // زر الحذف
       const del = document.createElement('span');
       del.style.cssText = 'position:absolute;top:1px;right:1px;width:16px;height:16px;background:rgba(0,0,0,.2);border-radius:3px;font-size:.65rem;line-height:1.6;cursor:pointer;opacity:.6';
       del.textContent = '✕';
