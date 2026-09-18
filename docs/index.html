@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-29 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-30 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -516,7 +516,7 @@ function dgEdgePoint(s, tx, ty){
 function dgEdgeGeom(ed){
   const a=dgShape(ed.from), b=dgShape(ed.to); if(!a||!b) return null;
   const st=ed.style||'straight';
-  if(st==='ortho') return dgOrthoGeom(a,b);
+  if(st==='ortho') return dgOrthoGeom(a,b,ed.controlPoints);
   const p1=dgEdgePoint(a, b.x+b.w/2, b.y+b.h/2);
   const p2=dgEdgePoint(b, a.x+a.w/2, a.y+a.h/2);
   const cpts=ed.controlPoints||[];
@@ -563,11 +563,19 @@ function dgSideDir(s, pt){
   const dx=pt.x-(s.x+s.w/2), dy=pt.y-(s.y+s.h/2);
   return Math.abs(dx)>=Math.abs(dy)?{x:Math.sign(dx)||1,y:0}:{x:0,y:Math.sign(dy)||1};
 }
-function dgOrthoGeom(a,b){
+function dgOrthoGeom(a,b,cpts){
   const ac={x:a.x+a.w/2,y:a.y+a.h/2}, bc={x:b.x+b.w/2,y:b.y+b.h/2};
   const dx=bc.x-ac.x, dy=bc.y-ac.y;
   const dist=Math.hypot(dx,dy);
   const offset=Math.max(2, Math.min(dist*0.05, 4));
+  if(cpts&&cpts.length>0){
+    const cp=cpts[0];
+    let p1={x:dx>=0?a.x+a.w:a.x, y:ac.y}, p2={x:dx>=0?b.x:b.x+b.w, y:bc.y};
+    p1.x+=dx>=0?offset:-offset; p2.x+=dx>=0?-offset:offset;
+    let d=`M${p1.x},${p1.y} L${cp.x},${p1.y} L${cp.x},${p2.y} L${p2.x},${p2.y}`;
+    const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+    return { d, mx, my, p1, p2 };
+  }
   if(Math.abs(dx)>=Math.abs(dy)){
     let p1={x:dx>=0?a.x+a.w:a.x, y:ac.y}, p2={x:dx>=0?b.x:b.x+b.w, y:bc.y};
     p1.x+=dx>=0?offset:-offset; p2.x+=dx>=0?-offset:offset;
