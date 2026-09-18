@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trackpad Gesture Test</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+  .section { margin: 20px 0; padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #2196f3; }
+  .result { margin: 10px 0; padding: 10px; background: white; border-radius: 5px; border-left: 4px solid #ddd; }
+  .pass { border-color: #4caf50; color: #2e7d32; }
+  .fail { border-color: #f44336; color: #c62828; }
+  .info { border-color: #2196f3; color: #1565c0; }
+  #test-area { width: 100%; height: 300px; border: 2px solid #ccc; background: white; margin: 20px 0; cursor: move; }
+  .event-log { max-height: 200px; overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; padding: 10px; }
+</style>
+</head>
+<body>
+<h1>Trackpad Gesture Test</h1>
+
+<div class="section">
+  <h2>Test Area - Try These Gestures:</h2>
+  <div id="test-area">
+    <p style="padding: 10px;">
+      • Move two fingers vertically to PAN UP/DOWN<br/>
+      • Move two fingers horizontally to PAN LEFT/RIGHT<br/>
+      • Spread fingers apart to ZOOM IN (on trackpad)<br/>
+      • Pinch fingers together to ZOOM OUT (on trackpad)<br/>
+      • Hold Ctrl/Cmd and scroll to ZOOM
+    </p>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Wheel Events Detected:</h3>
+  <div id="results"></div>
+  <div class="event-log" id="event-log"></div>
+</div>
+
+<script>
+const resultsDiv = document.getElementById('results');
+const eventLog = document.getElementById('event-log');
+const testArea = document.getElementById('test-area');
+
+let eventCount = 0;
+const maxLogEntries = 50;
+
+function addResult(title, status, message) {
+  const div = document.createElement('div');
+  div.className = `result ${status}`;
+  div.innerHTML = `<strong>${title}:</strong> ${message}`;
+  resultsDiv.appendChild(div);
+}
+
+function logEvent(title, details) {
+  eventCount++;
+  const entry = document.createElement('div');
+  entry.style.fontSize = '0.85rem';
+  entry.style.padding = '5px';
+  entry.style.borderBottom = '1px solid #eee';
+  entry.innerHTML = `<strong>${title}</strong> - deltaX: ${details.deltaX}, deltaY: ${details.deltaY}, ctrlKey: ${details.ctrlKey}, metaKey: ${details.metaKey}, detection: ${details.type}`;
+  eventLog.insertBefore(entry, eventLog.firstChild);
+
+  // Keep only last 50 entries
+  while (eventLog.children.length > maxLogEntries) {
+    eventLog.removeChild(eventLog.lastChild);
+  }
+}
+
+// Test if dgWheel exists
+setTimeout(() => {
+  if (typeof window.dgWheel === 'function') {
+    addResult('Function Check', 'pass', '✓ dgWheel() function found');
+  } else {
+    addResult('Function Check', 'fail', '✗ dgWheel() function not found');
+  }
+
+  if (typeof window.dgZoom === 'function') {
+    addResult('Zoom Function', 'pass', '✓ dgZoom() function found');
+  } else {
+    addResult('Zoom Function', 'fail', '✗ dgZoom() function not found');
+  }
+
+  if (typeof window.dgScale === 'number') {
+    addResult('Scale Variable', 'pass', `✓ dgScale variable exists (value: ${window.dgScale})`);
+  } else {
+    addResult('Scale Variable', 'fail', '✗ dgScale variable not found');
+  }
+
+  const wrap = document.getElementById('dg-wrap');
+  if (wrap) {
+    addResult('Wrap Element', 'pass', '✓ dg-wrap element found');
+  } else {
+    addResult('Wrap Element', 'fail', '✗ dg-wrap element not found');
+  }
+}, 500);
+
+// Listen to wheel events on test area
+testArea.addEventListener('wheel', (e) => {
+  e.preventDefault();
+
+  const deltaX = e.deltaX || 0;
+  const deltaY = e.deltaY || 0;
+  const ctrlKey = e.ctrlKey || false;
+  const metaKey = e.metaKey || false;
+
+  // Detect gesture type based on the detection logic in dgWheel
+  const isPinchZoom = (ctrlKey || metaKey) || (Math.abs(deltaX) > 0 && Math.abs(deltaY) > 0);
+  const type = isPinchZoom ? 'PINCH_ZOOM' : 'PAN';
+
+  logEvent(`Event #${eventCount + 1}`, {
+    deltaX: Math.round(deltaX),
+    deltaY: Math.round(deltaY),
+    ctrlKey,
+    metaKey,
+    type
+  });
+
+  // Show current scale
+  const scaleDisplay = document.getElementById('scale-display');
+  if (scaleDisplay) {
+    scaleDisplay.textContent = `Current scale: ${Math.round(window.dgScale * 100)}%`;
+  }
+}, true);
+
+// Add scale display
+const scaleDisplay = document.createElement('div');
+scaleDisplay.id = 'scale-display';
+scaleDisplay.style.marginTop = '10px';
+scaleDisplay.style.fontSize = '0.9rem';
+scaleDisplay.textContent = `Current scale: ${Math.round((window.dgScale || 1) * 100)}%`;
+resultsDiv.appendChild(scaleDisplay);
+
+addResult('Status', 'info', '✓ Test page loaded. Move over the test area and use trackpad gestures.');
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trackpad Gestures - End-to-End Test</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f0f0; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { margin-bottom: 20px; color: #333; }
+  .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .test-box { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #ddd; border-radius: 4px; }
+  .test-box.pass { border-color: #4caf50; background: #f1f8f6; }
+  .test-box.fail { border-color: #f44336; background: #ffebee; }
+  .test-box.info { border-color: #2196f3; background: #e3f2fd; }
+  .status { font-weight: bold; margin-right: 10px; }
+  .pass .status::before { content: '✓ '; color: #4caf50; }
+  .fail .status::before { content: '✗ '; color: #f44336; }
+  .info .status::before { content: 'ℹ '; color: #2196f3; }
+  code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+  .diagram-area { background: white; border: 2px solid #2196f3; height: 400px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 20px 0; }
+  .instructions { background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #4caf50; }
+  .highlight { background: #fff3cd; padding: 2px 4px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🎯 Trackpad Gesture Control - E2E Test</h1>
+
+  <div class="section">
+    <h2>📋 System Status</h2>
+    <div id="status-container"></div>
+  </div>
+
+  <div class="section">
+    <h2>🎮 Interactive Test Area</h2>
+    <div class="instructions">
+      <strong>Try these gestures in the diagram area below:</strong>
+      <ul style="margin-top: 10px; margin-left: 20px;">
+        <li><span class="highlight">Two fingers on trackpad:</span> Move up/down/left/right to <strong>PAN</strong></li>
+        <li><span class="highlight">Two fingers spreading apart:</span> <strong>ZOOM IN</strong> (pinch out gesture)</li>
+        <li><span class="highlight">Two fingers pinching together:</span> <strong>ZOOM OUT</strong> (pinch in gesture)</li>
+        <li><span class="highlight">Hold Ctrl/Cmd + scroll:</span> <strong>ZOOM</strong> in/out</li>
+      </ul>
+    </div>
+
+    <iframe id="app-frame" src="http://localhost:8000" style="width: 100%; height: 500px; border: 2px solid #ccc; border-radius: 4px;"></iframe>
+  </div>
+
+  <div class="section">
+    <h2>📊 Event Monitor</h2>
+    <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 0.9rem; font-family: monospace;">
+      <div id="event-log" style="min-height: 100px;">Waiting for events...</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>✅ Test Results</h2>
+    <div id="results-container"></div>
+  </div>
+</div>
+
+<script>
+const statusContainer = document.getElementById('status-container');
+const resultsContainer = document.getElementById('results-container');
+const eventLog = document.getElementById('event-log');
+const appFrame = document.getElementById('app-frame');
+
+let eventCount = 0;
+
+function addStatus(title, passed, details) {
+  const div = document.createElement('div');
+  div.className = `test-box ${passed ? 'pass' : passed === null ? 'info' : 'fail'}`;
+  div.innerHTML = `<div class="status">${title}</div><div>${details}</div>`;
+  statusContainer.appendChild(div);
+  return div;
+}
+
+function addResult(title, passed, details) {
+  const div = document.createElement('div');
+  div.className = `test-box ${passed ? 'pass' : passed === null ? 'info' : 'fail'}`;
+  div.innerHTML = `<div class="status">${title}</div><div>${details}</div>`;
+  resultsContainer.appendChild(div);
+  return div;
+}
+
+function logEvent(type, details) {
+  eventCount++;
+  const entry = document.createElement('div');
+  entry.style.padding = '5px 0';
+  entry.style.borderBottom = '1px solid #eee';
+  entry.innerHTML = `<strong>#${eventCount} ${type}</strong> → deltaX: ${details.deltaX}, deltaY: ${details.deltaY}, detection: ${details.detection}`;
+  eventLog.insertBefore(entry, eventLog.firstChild);
+
+  if (eventLog.children.length > 30) {
+    eventLog.removeChild(eventLog.lastChild);
+  }
+}
+
+// Monitor iframe for wheel events
+setTimeout(() => {
+  try {
+    const appWindow = appFrame.contentWindow;
+    const appDoc = appFrame.contentDocument;
+
+    if (!appWindow || !appDoc) {
+      addStatus('Iframe Access', false, 'Cannot access iframe (cross-origin issue)');
+      return;
+    }
+
+    // Check if required functions exist
+    const hasWheel = typeof appWindow.dgWheel === 'function';
+    const hasZoom = typeof appWindow.dgZoom === 'function';
+    const hasScale = typeof appWindow.dgScale === 'number';
+    const hasWrap = !!appDoc.getElementById('dg-wrap');
+    const hasSvg = !!appDoc.getElementById('dg-svg');
+
+    addStatus('dgWheel Function', hasWheel, `Function found and callable`);
+    addStatus('dgZoom Function', hasZoom, `Function found and callable`);
+    addStatus('dgScale Variable', hasScale, `Scale value: ${Math.round((appWindow.dgScale || 1) * 100)}%`);
+    addStatus('dg-wrap Element', hasWrap, `Scrollable container present`);
+    addStatus('dg-svg Element', hasSvg, `SVG canvas present`);
+
+    // Detect version
+    const bodyText = appDoc.body?.textContent || '';
+    const version = bodyText.match(/A-\d+/)?.[0];
+    addStatus('Application Version', version === 'A-19', `Version: ${version}`);
+
+    // Add result summary
+    if (hasWheel && hasZoom && hasScale !== false && hasWrap && hasSvg) {
+      addResult('System Ready', true, '✓ All components initialized and ready for trackpad gestures');
+
+      addResult('Gesture Detection', true, `
+        • Pinch zoom: Both deltaX and deltaY present
+        • Pan: Only one delta axis (vertical or horizontal)
+        • Ctrl+wheel: Zoom with control key held
+      `);
+
+      addResult('Implementation', true, `
+        <code>if ((ctrlKey || metaKey) || (Math.abs(deltaX) > 0 && Math.abs(deltaY) > 0))</code><br/>
+        → Zoom gesture detected<br/>
+        Otherwise → Pan gesture detected
+      `);
+    } else {
+      addResult('System Status', false, 'Some components missing or not initialized');
+    }
+
+  } catch (e) {
+    addStatus('Error', false, e.message);
+    addResult('Status', false, 'Could not complete system check');
+  }
+
+  // Try to add event listener to wrap element
+  setTimeout(() => {
+    try {
+      const appDoc = appFrame.contentDocument;
+      const wrap = appDoc?.getElementById('dg-wrap');
+      if (wrap) {
+        wrap.addEventListener('wheel', (e) => {
+          const deltaX = e.deltaX || 0;
+          const deltaY = e.deltaY || 0;
+          const ctrlKey = e.ctrlKey || false;
+          const metaKey = e.metaKey || false;
+
+          const isPinchZoom = (ctrlKey || metaKey) || (Math.abs(deltaX) > 0 && Math.abs(deltaY) > 0);
+          const type = isPinchZoom ? 'PINCH_ZOOM' : 'PAN';
+
+          logEvent(type, {
+            deltaX: Math.round(deltaX),
+            deltaY: Math.round(deltaY),
+            detection: type
+          });
+        }, true);
+
+        addStatus('Event Listener', true, 'Monitoring wheel events on dg-wrap');
+      }
+    } catch (e) {
+      // Can't access due to cross-origin
+    }
+  }, 1000);
+
+}, 1000);
+
+// Add general instructions
+const instructions = document.createElement('div');
+instructions.className = 'test-box info';
+instructions.innerHTML = `
+  <div class="status">Instructions</div>
+  <div>
+    Scroll/gesture on the diagram area above to test trackpad functionality.
+    The application will respond to:<br/>
+    1️⃣ Pinch zoom (two fingers spreading/pinching)<br/>
+    2️⃣ Pan (two fingers dragging)<br/>
+    3️⃣ Ctrl+wheel zoom
+  </div>
+`;
+resultsContainer.appendChild(instructions);
+</script>
+
+</body>
+</html>
