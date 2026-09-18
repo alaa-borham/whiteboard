@@ -608,11 +608,9 @@ function renderDiagram(){
   });
   if(dgAct&&dgAct.type==='connect'&&dgAct.cur){ const a=dgShape(dgAct.from); if(a){ const fx=dgAct.fromX!=null?dgAct.fromX:a.x+a.w, fy=dgAct.fromY!=null?dgAct.fromY:a.y+a.h/2; h+=`<line x1="${fx}" y1="${fy}" x2="${dgAct.cur.x}" y2="${dgAct.cur.y}" stroke="#7cb342" stroke-width="2" stroke-dasharray="5 4" style="pointer-events:none"/>`; } }
   svg.innerHTML=h;
-  let minX=0, minY=0, maxX=1600, maxY=1000;
-  dg.shapes.forEach(s=>{ minX=Math.min(minX,s.x-50); minY=Math.min(minY,s.y-50); maxX=Math.max(maxX,s.x+s.w+50); maxY=Math.max(maxY,s.y+s.h+50); });
-  dg.edges.forEach(e=>{ const g=dgEdgeGeom(e); if(g&&g.mx!=null&&g.my!=null){ minX=Math.min(minX,g.mx-50); minY=Math.min(minY,g.my-50); maxX=Math.max(maxX,g.mx+50); maxY=Math.max(maxY,g.my+50); } });
-  const w=Math.max(1600,maxX-minX), h=Math.max(1000,maxY-minY);
-  svg.setAttribute('width',Math.round(w)); svg.setAttribute('height',Math.round(h)); svg.setAttribute('viewBox',`${Math.round(minX)} ${Math.round(minY)} ${Math.round(w)} ${Math.round(h)}`);
+  let maxX=1600, maxY=1000;
+  if(dg.shapes.length>0){ dg.shapes.forEach(s=>{ maxX=Math.max(maxX,s.x+s.w+100); maxY=Math.max(maxY,s.y+s.h+100); }); dg.edges.forEach(e=>{ const g=dgEdgeGeom(e); if(g){ maxX=Math.max(maxX,g.mx+100); maxY=Math.max(maxY,g.my+100); } }); }
+  svg.setAttribute('width',Math.round(maxX)); svg.setAttribute('height',Math.round(maxY)); svg.setAttribute('viewBox',`0 0 ${Math.round(maxX)} ${Math.round(maxY)}`);
   dgSyncControls();
 }
 function dgMarkSwatch(sel,attr,val){ document.querySelectorAll(sel+' .swatch').forEach(x=>x.classList.toggle('sel', x.dataset[attr]===val)); }
