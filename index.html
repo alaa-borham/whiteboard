@@ -136,7 +136,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v45 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v46 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -296,6 +296,21 @@ const DM = {
     const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f', '#7cb342'];
     const emojis = ['📐', '📊', '🎨', '✨', '🎯', '📝', '🔧', '🎭', '🌟', '💡'];
     const now = new Date().toISOString();
+
+    // هجرة البيانات القديمة إلى التنسيق الجديد
+    const firstDesignId = this.list[0].id;
+    ['canvas', 'kanban', 'notes', 'diagram', 'dgbg'].forEach(type => {
+      const oldKey = type;
+      const newKey = `design_${firstDesignId}_${type}`;
+      if(!LS.get(newKey)) {
+        const oldData = LS.get(oldKey);
+        if(oldData) {
+          LS.set(newKey, oldData);
+          LS.del(oldKey);
+        }
+      }
+    });
+
     this.list.forEach((d, i) => {
       if(!d.color) d.color = colors[i % colors.length];
       if(!d.modified) d.modified = d.created || now;
@@ -304,6 +319,8 @@ const DM = {
     this.save();
     this.activeId = LS.get('active_design', this.list[0].id);
     this.render();
+    // تحميل البيانات للوضع الحالي
+    if(S.mode) setMode(S.mode);
   },
   save(){ LS.set('designs_list', JSON.stringify(this.list)); },
   key(type){ return `design_${this.activeId}_${type}`; },
