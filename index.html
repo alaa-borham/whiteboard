@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v29 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v30 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -628,32 +628,21 @@ function dgSyncControls(){
 
 function dgSvgPos(e){
   const svg=document.getElementById('dg-svg');
-  if(!svg) return {x:0,y:0};
   const wrap=document.getElementById('dg-wrap');
-  if(!wrap) return {x:0,y:0};
+  if(!svg || !wrap) return {x:0,y:0};
 
-  try {
-    const wrapRect=wrap.getBoundingClientRect();
-    const svgRect=svg.getBoundingClientRect();
+  const wrapR=wrap.getBoundingClientRect();
+  const svgR=svg.getBoundingClientRect();
+  if(svgR.width<=0 || svgR.height<=0) return {x:0,y:0};
 
-    if(wrapRect.width<=0 || wrapRect.height<=0 || svgRect.width<=0 || svgRect.height<=0) {
-      return {x:0,y:0};
-    }
+  const sx=wrap.scrollLeft||0, sy=wrap.scrollTop||0;
+  const relX=(e.clientX-svgR.left)+sx;
+  const relY=(e.clientY-svgR.top)+sy;
 
-    const scrollLeft=wrap.scrollLeft||0;
-    const scrollTop=wrap.scrollTop||0;
-
-    const relX=e.clientX-wrapRect.left+scrollLeft;
-    const relY=e.clientY-wrapRect.top+scrollTop;
-
-    const x=relX*(1600/svgRect.width);
-    const y=relY*(1000/svgRect.height);
-
-    if(isNaN(x)||isNaN(y)) return {x:0,y:0};
-    return {x,y};
-  } catch(err) {
-    return {x:0,y:0};
-  }
+  return {
+    x: Math.round(relX*1600/svgR.width),
+    y: Math.round(relY*1000/svgR.height)
+  };
 }
 function dgDown(e){
   const t=e.target, p=dgSvgPos(e);
