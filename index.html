@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-8 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-9 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -626,7 +626,7 @@ function dgSyncControls(){
   if(dgSelEdge){ const e=dg.edges.find(x=>x.id===dgSelEdge); if(e){ dgEdgeDefault.style=e.style||'straight'; dgEdgeDefault.arrows=e.arrows||'end'; dgEdgeDefault.dash=!!e.dash; dgEdgeDefault.width=e.width||2; dgEdgeDefault.color=e.color||'#555555'; dgUpdateEdgeButtons(); dgMarkSwatch('#dg-edgecolors','ec',dgEdgeDefault.color); } }
 }
 
-function dgSvgPos(e){ const r=document.getElementById('dg-svg').getBoundingClientRect(); return { x:(e.clientX-r.left)*(1600/r.width), y:(e.clientY-r.top)*(1000/r.height) }; }
+function dgSvgPos(e){ const svg=document.getElementById('dg-svg'); const r=svg.getBoundingClientRect(); const vb=svg.viewBox.baseVal; const scale=(vb.width>0?vb.width:1600)/r.width; return { x:(e.clientX-r.left)*scale+vb.x, y:(e.clientY-r.top)*(vb.height>0?vb.height:1000)/r.height+vb.y }; }
 function dgDown(e){
   const t=e.target, p=dgSvgPos(e);
   if(t.classList.contains('dg-handle')){ e.preventDefault(); const s=dgShape(dgSel); dgAct={type:'resize',id:dgSel,h:+t.dataset.h,ox:s.x,oy:s.y,ow:s.w,oh:s.h,sx:p.x,sy:p.y,snapped:false}; return; }
@@ -1025,7 +1025,7 @@ function setTheme(t){
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{});
-    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a8').map(n=>caches.delete(n)))).catch(()=>{});
+    caches.keys().then(names=>Promise.all(names.filter(n=>n!=='wb-a9').map(n=>caches.delete(n)))).catch(()=>{});
   });
 }
 </script>
