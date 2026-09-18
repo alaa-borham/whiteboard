@@ -126,12 +126,17 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
 <header>
   <div class="brand">🖊️ الوايت بورد <small>لوحة رسم ومهام وملاحظات</small></div>
   <div class="spacer"></div>
+  <div class="design-mgmt" style="display:flex;gap:6px;align-items:center">
+    <button class="btn btn-outline" style="font-size:.78rem;padding:4px 8px" onclick="DM.export()" title="حفظ جميع التصاميم كملف">💾 تصدير</button>
+    <button class="btn btn-outline" style="font-size:.78rem;padding:4px 8px" onclick="document.getElementById('import-file').click()" title="استيراد التصاميم من ملف">📂 استيراد</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="DM.import(this.files[0])">
+  </div>
   <div class="thm" id="thm-group">
     <button data-t="light" onclick="setTheme('light')" title="فاتح">☀️ فاتح</button>
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v41 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v42 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -468,7 +473,11 @@ const DM = {
     if(!confirm(`حذف التصميم "${this.list.find(d=>d.id===id)?.name || id}"؟`)) return;
     this.list = this.list.filter(d => d.id !== id);
     this.save();
-    if(this.activeId === id) this.switch(this.list[0].id);
+    if(this.activeId === id) {
+      this.switch(this.list[0].id);
+    } else {
+      this.render();
+    }
   },
   switch(id){
     if(!this.list.some(d => d.id === id)) return;
