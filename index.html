@@ -136,7 +136,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v42 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v43 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -288,12 +288,17 @@ const DM = {
     try { this.list = JSON.parse(LS.get('designs_list', '[]')); } catch(_) {}
     if (!this.list.length) {
       const id = uid();
-      this.list = [{ id, name: 'تصميمي الأول', created: new Date().toISOString(), color: '#7cb342' }];
+      const now = new Date().toISOString();
+      this.list = [{ id, name: 'تصميمي الأول', created: now, modified: now, color: '#7cb342' }];
       this.save();
     }
-    // إضافة لون للتصاميم القديمة التي لا تملك لون
+    // إضافة لون والتاريخ المعدّل للتصاميم القديمة
     const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f', '#7cb342'];
-    this.list.forEach((d, i) => { if(!d.color) d.color = colors[i % colors.length]; });
+    const now = new Date().toISOString();
+    this.list.forEach((d, i) => {
+      if(!d.color) d.color = colors[i % colors.length];
+      if(!d.modified) d.modified = d.created || now;
+    });
     this.save();
     this.activeId = LS.get('active_design', this.list[0].id);
     this.render();
@@ -302,11 +307,19 @@ const DM = {
   key(type){ return `design_${this.activeId}_${type}`; },
   get(k,d){ return LS.get(this.key(k), d); },
   set(k,v){ LS.set(this.key(k), v); },
+  updateModified(){
+    const design = this.list.find(d => d.id === this.activeId);
+    if(design) {
+      design.modified = new Date().toISOString();
+      this.save();
+    }
+  },
   create(name){
     const id = uid();
     const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f'];
     const color = colors[this.list.length % colors.length];
-    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: new Date().toISOString(), color });
+    const now = new Date().toISOString();
+    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: now, modified: now, color });
     this.save();
     this.switch(id);
   },
@@ -335,7 +348,9 @@ const DM = {
     const newDesign = JSON.parse(JSON.stringify(design));
     newDesign.id = newId;
     newDesign.name = `${design.name} (نسخة)`;
-    newDesign.created = new Date().toISOString();
+    const now = new Date().toISOString();
+    newDesign.created = now;
+    newDesign.modified = now;
     this.list.push(newDesign);
     this.save();
     // نسخ جميع البيانات من التصميم الأصلي
@@ -385,6 +400,7 @@ const DM = {
               id: design.id,
               name: design.name,
               created: design.created,
+              modified: design.modified || design.created,
               color: design.color || '#7cb342'
             };
             this.list.push(newDesign);
@@ -510,6 +526,10 @@ const DM = {
       btn.style.borderTopColor = design.color || '#7cb342';
       btn.innerHTML = `${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
 
+      // إضافة تاريخ آخر تعديل كـ tooltip
+      const fmt = (d) => new Date(d).toLocaleString('ar-SA');
+      btn.title = `${design.name}\nأنشئ: ${fmt(design.created)}\nعدّل: ${fmt(design.modified || design.created)}`;
+
       btn.onclick = () => this.switch(design.id);
       btn.oncontextmenu = (e) => { e.preventDefault(); this.showDesignMenu(design.id, e.clientX, e.clientY); };
 
@@ -566,7 +586,7 @@ function toggleEraser(){
 function pos(e){ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) }; }
 function clearCtx(){ const c=ctx(); c.fillStyle='#fff'; c.fillRect(0,0,cv.width,cv.height); }
 function snapshot(){ S.undoStack.push(cv.toDataURL('image/png')); if(S.undoStack.length>20) S.undoStack.shift(); }
-function saveCanvas(){ try{ DM.set('canvas', cv.toDataURL('image/png')); }catch(_){} }
+function saveCanvas(){ try{ DM.set('canvas', cv.toDataURL('image/png')); DM.updateModified(); }catch(_){} }
 function loadCanvas(){
   const d=DM.get('canvas','');
   if(d){ const img=new Image(); img.onload=()=>{ clearCtx(); ctx().drawImage(img,0,0,cv.width,cv.height); }; img.src=d; }
@@ -597,7 +617,7 @@ function loadBoard(){
     { id:uid(), title:'منجز',         cards:[] },
   ]};
 }
-function saveBoard(){ DM.set('kanban', JSON.stringify(board)); }
+function saveBoard(){ DM.set('kanban', JSON.stringify(board)); DM.updateModified(); }
 function renderBoard(){
   board = loadBoard();
   const wrap=document.getElementById('board'); wrap.innerHTML='';
@@ -642,12 +662,12 @@ function dropCard(destId){
 }
 function addColumn(){ board.cols.push({id:uid(),title:'عمود جديد',cards:[]}); saveBoard(); renderBoard(); }
 function delColumn(colId){ const c=board.cols.find(x=>x.id===colId); if(c&&c.cards.length&&!confirm('حذف العمود «'+c.title+'» وكل بطاقاته؟')) return; board.cols=board.cols.filter(x=>x.id!==colId); saveBoard(); renderBoard(); }
-function resetBoard(){ if(!confirm('إعادة ضبط لوحة المهام إلى الأعمدة الافتراضية؟ (تُحذف كل البطاقات)')) return; DM.set('kanban', ''); renderBoard(); }
+function resetBoard(){ if(!confirm('إعادة ضبط لوحة المهام إلى الأعمدة الافتراضية؟ (تُحذف كل البطاقات)')) return; DM.set('kanban', ''); DM.updateModified(); renderBoard(); }
 
 /* ═══ الملاحظات اللاصقة ═══ */
 let notes=null;
 function loadNotes(){ try{ const d=JSON.parse(DM.get('notes','')); if(Array.isArray(d)) return d; }catch(_){} return []; }
-function saveNotes(){ DM.set('notes', JSON.stringify(notes)); }
+function saveNotes(){ DM.set('notes', JSON.stringify(notes)); DM.updateModified(); }
 function renderNotes(){
   notes=loadNotes();
   const bd=document.getElementById('notes-board'); bd.innerHTML='';
@@ -720,7 +740,7 @@ const DG_BGCOLORS=['#ffffff','#f6f9f2','#eef4ff','#fff8e1','#fce4ec','#0b1f13','
 
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function dgLoad(){ try{ const d=JSON.parse(DM.get('diagram','')); if(d&&d.shapes) return d; }catch(_){} return { shapes:[], edges:[] }; }
-function dgSave(){ DM.set('diagram', JSON.stringify(dg)); }
+function dgSave(){ DM.set('diagram', JSON.stringify(dg)); DM.updateModified(); }
 function dgSnapshot(){ dgUndoStack.push(JSON.stringify(dg)); if(dgUndoStack.length>40) dgUndoStack.shift(); }
 function dgUndoDg(){ if(!dgUndoStack.length) return; dg=JSON.parse(dgUndoStack.pop()); dgSel=dgSelEdge=null; dgSave(); renderDiagram(); }
 function dgShape(id){ return dg.shapes.find(s=>s.id===id); }
@@ -1193,7 +1213,7 @@ function dgTintImage(color){
 }
 // ── خلفية البورد: لون + نمط (نقاط/مربعات/بدون)
 function dgLoadBg(){ try{ const d=JSON.parse(DM.get('dgbg','')); if(d&&d.color) dgBg=d; }catch(_){} }
-function dgSaveBg(){ DM.set('dgbg', JSON.stringify(dgBg)); }
+function dgSaveBg(){ DM.set('dgbg', JSON.stringify(dgBg)); DM.updateModified(); }
 function dgApplyBg(){
   const wrap=document.getElementById('dg-wrap'); if(!wrap) return;
   wrap.style.background=dgBg.color;
