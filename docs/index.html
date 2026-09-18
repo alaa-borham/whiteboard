@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-26 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-27 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -693,6 +693,29 @@ function dgMove(e){
     s.x=Math.round(x); s.y=Math.round(y); s.w=Math.round(w); s.h=Math.round(ht); renderDiagram(); }
   else if(dgAct.type==='connect'){ dgAct.cur=p; renderDiagram(); }
 }
+function dgShowEdgeMenu(eid, x, y){
+  const ed=dg.edges.find(e=>e.id===eid); if(!ed) return;
+  const menu=document.createElement('div');
+  menu.style.cssText='position:fixed;left:'+x+'px;top:'+y+'px;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:10000;min-width:180px;';
+  menu.innerHTML=`
+    <div style="padding:8px 12px;cursor:pointer;border-radius:4px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'" onclick="dgAddControlPoint('${eid}'); this.parentElement.remove();">+ إضافة نقطة تحكم</div>
+    <div style="border-top:1px solid #eee;padding:8px 12px;cursor:pointer;border-radius:4px;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'" onclick="dgDeleteEdge('${eid}'); this.parentElement.remove();">🗑️ حذف الخط</div>
+  `;
+  document.body.appendChild(menu);
+  setTimeout(()=>{ document.addEventListener('click', ()=>{ menu.remove(); }, {once:true}); }, 100);
+}
+function dgAddControlPoint(eid){
+  const ed=dg.edges.find(e=>e.id===eid); if(!ed) return;
+  if(!ed.controlPoints) ed.controlPoints=[];
+  const a=dgShape(ed.from), b=dgShape(ed.to);
+  const newPt={x:Math.round((a.x+a.w/2+b.x+b.w/2)/2),y:Math.round((a.y+a.h/2+b.y+b.h/2)/2)};
+  ed.controlPoints.push(newPt);
+  dgSnapshot(); dgSave(); renderDiagram();
+}
+function dgDeleteEdge(eid){
+  const idx=dg.edges.findIndex(e=>e.id===eid); if(idx<0) return;
+  dgSnapshot(); dg.edges.splice(idx,1); dgSelEdge=null; dgSave(); renderDiagram();
+}
 function dgUp(e){
   if(!dgAct) return;
   if(dgAct.type==='connect'){
@@ -1061,6 +1084,7 @@ function dgInit(){
   const wrap=document.getElementById('dg-wrap');
   svg.addEventListener('pointerdown', dgDown);
   svg.addEventListener('dblclick', e=>{ const g=e.target.closest('.dg-shape'); if(g){ dgEditText(g.dataset.id); return; } const ed=e.target.closest('.dg-edge-hit')||e.target.closest('.dg-edge'); if(ed) dgEditEdgeLabel(ed.dataset.eid); });
+  svg.addEventListener('contextmenu', e=>{ e.preventDefault(); const ed=e.target.closest('.dg-edge-hit')||e.target.closest('.dg-edge'); if(ed&&dgSelEdge===ed.dataset.eid){ dgShowEdgeMenu(ed.dataset.eid, e.clientX, e.clientY); } });
   if(wrap) wrap.addEventListener('wheel', dgWheel, { passive: false });
   window.addEventListener('pointermove', dgMove);
   window.addEventListener('pointerup', dgUp);
