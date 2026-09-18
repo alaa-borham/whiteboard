@@ -662,16 +662,17 @@ function dgMove(e){
       dgSnapshot();
       dgAct.snapped=true;
       if(dgAct.multi && dgAct.multi.length>1){
-        dgAct.origins=dgAct.multi.map(id=>{ const s=dgShape(id); return {id,x:s?.x||0,y:s?.y||0}; });
+        dgAct.origins={};
+        dgAct.multi.forEach(id=>{ const s=dgShape(id); if(s) dgAct.origins[id]={x:s.x,y:s.y}; });
       }
     }
     const dx=Math.round(p.x-dgAct.sx), dy=Math.round(p.y-dgAct.sy);
     if(dgAct.multi && dgAct.multi.length>1 && dgAct.origins){
-      dgAct.origins.forEach(orig=>{
-        const s=dgShape(orig.id);
+      Object.keys(dgAct.origins).forEach(id=>{
+        const s=dgShape(id);
         if(s){
-          s.x=Math.max(0,Math.min(1600-s.w,orig.x+dx));
-          s.y=Math.max(0,Math.min(1000-s.h,orig.y+dy));
+          s.x=Math.max(0,Math.min(1600-s.w,dgAct.origins[id].x+dx));
+          s.y=Math.max(0,Math.min(1000-s.h,dgAct.origins[id].y+dy));
         }
       });
     } else {
