@@ -621,19 +621,6 @@ const DM = {
 
 DM.init();
 
-// معالجات أحداث الرسم على Canvas
-cv.addEventListener('pointerdown', e=>{ e.preventDefault(); snapshot(); S.drawing=true; S.last=pos(e); try{cv.setPointerCapture(e.pointerId);}catch(_){} });
-cv.addEventListener('pointermove', e=>{
-  if(!S.drawing) return;
-  const p=pos(e), c=ctx();
-  c.lineCap='round'; c.lineJoin='round';
-  c.lineWidth = S.eraser ? S.size*2.5 : S.size;
-  c.strokeStyle = S.eraser ? '#fff' : S.color;
-  c.beginPath(); c.moveTo(S.last.x,S.last.y); c.lineTo(p.x,p.y); c.stroke();
-  S.last=p;
-});
-['pointerup','pointerleave'].forEach(ev=> cv.addEventListener(ev, ()=>{ if(S.drawing){ S.drawing=false; saveCanvas(); } }));
-
 // ═══ تبديل الأوضاع ═══
 function setMode(m){
   S.mode = m;
@@ -672,6 +659,38 @@ function loadCanvas(){
 function undo(){ if(!S.undoStack.length) return; const url=S.undoStack.pop(), img=new Image(); img.onload=()=>{ clearCtx(); ctx().drawImage(img,0,0,cv.width,cv.height); saveCanvas(); }; img.src=url; }
 function clearCanvas(){ if(!confirm('مسح الرسمة بالكامل؟')) return; snapshot(); clearCtx(); saveCanvas(); }
 function savePng(){ const a=document.createElement('a'); a.download='whiteboard-'+new Date().toISOString().slice(0,10)+'.png'; a.href=cv.toDataURL('image/png'); a.click(); }
+
+// معالجات أحداث الرسم
+cv.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  snapshot();
+  S.drawing=true;
+  S.last=pos(e);
+  try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+});
+
+cv.addEventListener('pointermove', e=>{
+  if(!S.drawing) return;
+  const p=pos(e), c=ctx();
+  c.lineCap='round';
+  c.lineJoin='round';
+  c.lineWidth = S.eraser ? S.size*2.5 : S.size;
+  c.strokeStyle = S.eraser ? '#fff' : S.color;
+  c.beginPath();
+  c.moveTo(S.last.x,S.last.y);
+  c.lineTo(p.x,p.y);
+  c.stroke();
+  S.last=p;
+});
+
+['pointerup','pointerleave'].forEach(ev=>
+  cv.addEventListener(ev, ()=>{
+    if(S.drawing){
+      S.drawing=false;
+      saveCanvas();
+    }
+  })
+);
 
 /* ═══ لوحة المهام (Kanban) ═══ */
 let board=null, dragCard=null;
