@@ -132,7 +132,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-21 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">A-22 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -508,7 +508,7 @@ function dgEdgePoint(s, tx, ty){
   const cx=s.x+s.w/2, cy=s.y+s.h/2; let dx=tx-cx, dy=ty-cy;
   if(dx===0&&dy===0) return {x:cx,y:cy};
   const sc=1/Math.max(Math.abs(dx)/(s.w/2), Math.abs(dy)/(s.h/2));
-  const dist=Math.hypot(dx*sc,dy*sc); const offset=3;
+  const dist=Math.hypot(dx*sc,dy*sc); const offset=6;
   if(dist>offset){ const ratio=(dist-offset)/dist; return {x:cx+dx*sc*ratio, y:cy+dy*sc*ratio}; }
   return { x:cx+dx*sc, y:cy+dy*sc };
 }
@@ -541,7 +541,7 @@ function dgSideDir(s, pt){
 function dgOrthoGeom(a,b){
   const ac={x:a.x+a.w/2,y:a.y+a.h/2}, bc={x:b.x+b.w/2,y:b.y+b.h/2};
   const dx=bc.x-ac.x, dy=bc.y-ac.y;
-  const offset=3;
+  const offset=6;
   if(Math.abs(dx)>=Math.abs(dy)){
     let p1={x:dx>=0?a.x+a.w:a.x, y:ac.y}, p2={x:dx>=0?b.x:b.x+b.w, y:bc.y};
     p1.x+=dx>=0?offset:-offset; p2.x+=dx>=0?-offset:offset;
