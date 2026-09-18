@@ -131,7 +131,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v40 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v41 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -313,6 +313,91 @@ const DM = {
       this.render();
     }
   },
+  rename(id){
+    const design = this.list.find(d => d.id === id);
+    if(!design) return;
+    const newName = prompt('اسم التصميم الجديد:', design.name);
+    if(newName && newName.trim()) {
+      design.name = newName.trim();
+      this.save();
+      this.render();
+    }
+  },
+  duplicate(id){
+    const design = this.list.find(d => d.id === id);
+    if(!design) return;
+    const newId = uid();
+    const newDesign = JSON.parse(JSON.stringify(design));
+    newDesign.id = newId;
+    newDesign.name = `${design.name} (نسخة)`;
+    newDesign.created = new Date().toISOString();
+    this.list.push(newDesign);
+    this.save();
+    // نسخ جميع البيانات من التصميم الأصلي
+    ['canvas', 'kanban', 'notes', 'diagram', 'dgbg'].forEach(type => {
+      const data = LS.get(`design_${id}_${type}`);
+      if(data) LS.set(`design_${newId}_${type}`, data);
+    });
+    this.switch(newId);
+  },
+  export(){
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      designs: this.list.map(d => ({
+        ...d,
+        data: {
+          canvas: LS.get(`design_${d.id}_canvas`, ''),
+          kanban: LS.get(`design_${d.id}_kanban`, ''),
+          notes: LS.get(`design_${d.id}_notes`, ''),
+          diagram: LS.get(`design_${d.id}_diagram`, ''),
+          dgbg: LS.get(`design_${d.id}_dgbg`, '')
+        }
+      }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `تصاميمي-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  import(file){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if(!data.designs || !Array.isArray(data.designs)) {
+          alert('❌ ملف غير صحيح');
+          return;
+        }
+        let imported = 0;
+        data.designs.forEach(design => {
+          const exists = this.list.some(d => d.id === design.id);
+          if(!exists) {
+            const newDesign = {
+              id: design.id,
+              name: design.name,
+              created: design.created,
+              color: design.color || '#7cb342'
+            };
+            this.list.push(newDesign);
+            ['canvas', 'kanban', 'notes', 'diagram', 'dgbg'].forEach(type => {
+              if(design.data[type]) LS.set(`design_${design.id}_${type}`, design.data[type]);
+            });
+            imported++;
+          }
+        });
+        this.save();
+        this.render();
+        alert(`✅ تم استيراد ${imported} تصميم بنجاح`);
+      } catch(err) {
+        alert('❌ خطأ في قراءة الملف');
+      }
+    };
+    reader.readAsText(file);
+  },
   showColorPicker(id){
     const design = this.list.find(d => d.id === id);
     if(!design) return;
@@ -333,6 +418,47 @@ const DM = {
         if(!colorDiv.contains(e.target)) {
           colorDiv.remove();
           document.removeEventListener('click', closeColorPicker);
+        }
+      });
+    }, 0);
+  },
+  showDesignMenu(id, x, y){
+    const design = this.list.find(d => d.id === id);
+    if(!design) return;
+
+    const menu = document.createElement('div');
+    menu.style.cssText = `position:fixed;top:${y}px;left:${x}px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:1000;min-width:160px;overflow:hidden`;
+
+    const items = [
+      { text: '✏️ إعادة تسمية', action: () => this.rename(id) },
+      { text: '📋 نسخ التصميم', action: () => this.duplicate(id) },
+      { text: '---', action: null },
+      { text: '🗑️ حذف', action: () => this.delete(id), danger: true }
+    ];
+
+    items.forEach(item => {
+      if(item.text === '---') {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'height:1px;background:#eee;margin:4px 0';
+        menu.appendChild(sep);
+      } else {
+        const btn = document.createElement('div');
+        btn.style.cssText = `padding:8px 12px;cursor:pointer;${item.danger ? 'color:#e53935;' : ''}`;
+        btn.textContent = item.text;
+        btn.onmouseover = () => btn.style.background = '#f5f5f5';
+        btn.onmouseout = () => btn.style.background = 'transparent';
+        btn.onclick = () => { item.action(); menu.remove(); };
+        menu.appendChild(btn);
+      }
+    });
+
+    document.body.appendChild(menu);
+
+    setTimeout(() => {
+      document.addEventListener('click', function closeMenu(e) {
+        if(!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
         }
       });
     }, 0);
@@ -376,13 +502,15 @@ const DM = {
       btn.innerHTML = `${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
 
       btn.onclick = () => this.switch(design.id);
+      btn.oncontextmenu = (e) => { e.preventDefault(); this.showDesignMenu(design.id, e.clientX, e.clientY); };
 
       // زر تغيير اللون
       const colorBtn = document.createElement('span');
       colorBtn.style.cssText = 'position:absolute;top:1px;left:1px;width:16px;height:16px;background:'+
         (design.color || '#7cb342')+';border-radius:3px;cursor:pointer;opacity:.8;border:1px solid rgba(255,255,255,.3)';
-      colorBtn.title = 'تغيير لون التبويب';
+      colorBtn.title = 'تغيير لون التبويب (Click) أو خيارات إضافية (Right Click)';
       colorBtn.onclick = (e) => { e.stopPropagation(); this.showColorPicker(design.id); };
+      colorBtn.oncontextmenu = (e) => { e.preventDefault(); this.showDesignMenu(design.id, e.clientX, e.clientY); };
       btn.appendChild(colorBtn);
 
       // زر الحذف
