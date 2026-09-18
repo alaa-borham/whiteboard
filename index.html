@@ -136,7 +136,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v44 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v45 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -1464,6 +1464,35 @@ function setTheme(t){
   LS.set('theme', t);
   document.querySelectorAll('.thm button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
 }
+// اختصارات لوحة المفاتيح
+document.addEventListener('keydown', (e) => {
+  const isInput = e.target.matches('input, textarea, [contenteditable]');
+  if (isInput) return;
+
+  if (e.ctrlKey || e.metaKey) {
+    switch(e.key.toLowerCase()) {
+      case 'n': // Ctrl+N: إنشاء تصميم جديد
+        e.preventDefault();
+        const name = prompt('اسم التصميم:');
+        if(name) DM.create(name);
+        break;
+      case '[': // Ctrl+[: التصميم السابق
+        e.preventDefault();
+        const current = DM.list.findIndex(d => d.id === DM.activeId);
+        if(current > 0) DM.switch(DM.list[current - 1].id);
+        break;
+      case ']': // Ctrl+]: التصميم التالي
+        e.preventDefault();
+        const current2 = DM.list.findIndex(d => d.id === DM.activeId);
+        if(current2 < DM.list.length - 1) DM.switch(DM.list[current2 + 1].id);
+        break;
+      case 'e': // Ctrl+E: تصدير
+        e.preventDefault();
+        DM.export();
+        break;
+    }
+  }
+});
 // عامل الخدمة: يضمن تحميل أحدث نسخة تلقائياً عند الاتصال
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 </script>
