@@ -136,7 +136,7 @@ body.dg-connect #dg-svg .dg-shape{cursor:crosshair}
     <button data-t="dark"  onclick="setTheme('dark')"  title="داكن">🌙 داكن</button>
     <button data-t="gray"  onclick="setTheme('gray')"  title="رمادي">◐ رمادي</button>
   </div>
-  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v43 · 2026-09-18</span>
+  <span style="background:rgba(124,179,66,.28);color:#dcedc8;border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700" title="رقم الإصدار — إن لم يتطابق مع الأحدث فأنت على نسخة قديمة، حدّث الصفحة (Ctrl+Shift+R)">v44 · 2026-09-18</span>
 </header>
 
 <div class="tabs">
@@ -292,12 +292,14 @@ const DM = {
       this.list = [{ id, name: 'تصميمي الأول', created: now, modified: now, color: '#7cb342' }];
       this.save();
     }
-    // إضافة لون والتاريخ المعدّل للتصاميم القديمة
+    // إضافة لون والتاريخ المعدّل والإيموجي للتصاميم القديمة
     const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f', '#7cb342'];
+    const emojis = ['📐', '📊', '🎨', '✨', '🎯', '📝', '🔧', '🎭', '🌟', '💡'];
     const now = new Date().toISOString();
     this.list.forEach((d, i) => {
       if(!d.color) d.color = colors[i % colors.length];
       if(!d.modified) d.modified = d.created || now;
+      if(!d.emoji) d.emoji = emojis[i % emojis.length];
     });
     this.save();
     this.activeId = LS.get('active_design', this.list[0].id);
@@ -317,9 +319,11 @@ const DM = {
   create(name){
     const id = uid();
     const colors = ['#e53935', '#2e7d32', '#1565c0', '#f9a825', '#6a1b9a', '#00838f'];
+    const emojis = ['📐', '📊', '🎨', '✨', '🎯', '📝', '🔧', '🎭'];
     const color = colors[this.list.length % colors.length];
+    const emoji = emojis[this.list.length % emojis.length];
     const now = new Date().toISOString();
-    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: now, modified: now, color });
+    this.list.push({ id, name: name || `تصميمي ${this.list.length + 1}`, created: now, modified: now, color, emoji });
     this.save();
     this.switch(id);
   },
@@ -330,6 +334,38 @@ const DM = {
       this.save();
       this.render();
     }
+  },
+  setEmoji(id, emoji){
+    const design = this.list.find(d => d.id === id);
+    if(design) {
+      design.emoji = emoji;
+      this.save();
+      this.render();
+    }
+  },
+  showEmojiPicker(id){
+    const design = this.list.find(d => d.id === id);
+    if(!design) return;
+    const emojis = ['📐', '📊', '🎨', '✨', '🎯', '📝', '🔧', '🎭', '🌟', '💡', '🚀', '⚡', '🎪', '🎯', '🎬', '🎪'];
+    let html = '<div style="display:grid;grid-template-columns:repeat(8,40px);gap:6px">';
+    emojis.forEach(e => {
+      html += `<div style="width:40px;height:40px;font-size:24px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:6px;cursor:pointer;border:${design.emoji===e?'2px solid #333':'1px solid #ccc'}" onclick="DM.setEmoji('${id}','${e}')">${e}</div>`;
+    });
+    html += '</div>';
+
+    const emojiDiv = document.createElement('div');
+    emojiDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:16px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:360px';
+    emojiDiv.innerHTML = html;
+    document.body.appendChild(emojiDiv);
+
+    setTimeout(() => {
+      document.addEventListener('click', function closeEmojiPicker(e) {
+        if(!emojiDiv.contains(e.target)) {
+          emojiDiv.remove();
+          document.removeEventListener('click', closeEmojiPicker);
+        }
+      });
+    }, 0);
   },
   rename(id){
     const design = this.list.find(d => d.id === id);
@@ -396,12 +432,14 @@ const DM = {
         data.designs.forEach(design => {
           const exists = this.list.some(d => d.id === design.id);
           if(!exists) {
+            const emojis = ['📐', '📊', '🎨', '✨', '🎯', '📝', '🔧', '🎭'];
             const newDesign = {
               id: design.id,
               name: design.name,
               created: design.created,
               modified: design.modified || design.created,
-              color: design.color || '#7cb342'
+              color: design.color || '#7cb342',
+              emoji: design.emoji || emojis[this.list.length % emojis.length]
             };
             this.list.push(newDesign);
             ['canvas', 'kanban', 'notes', 'diagram', 'dgbg'].forEach(type => {
@@ -524,7 +562,7 @@ const DM = {
       btn.style.borderTopWidth = '3px';
       btn.style.borderTopStyle = 'solid';
       btn.style.borderTopColor = design.color || '#7cb342';
-      btn.innerHTML = `${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
+      btn.innerHTML = `<span style="margin-inline-end:4px">${design.emoji || '📐'}</span>${design.name.substring(0, 12)}${design.name.length > 12 ? '...' : ''}`;
 
       // إضافة تاريخ آخر تعديل كـ tooltip
       const fmt = (d) => new Date(d).toLocaleString('ar-SA');
@@ -541,6 +579,14 @@ const DM = {
       colorBtn.onclick = (e) => { e.stopPropagation(); this.showColorPicker(design.id); };
       colorBtn.oncontextmenu = (e) => { e.preventDefault(); this.showDesignMenu(design.id, e.clientX, e.clientY); };
       btn.appendChild(colorBtn);
+
+      // زر تغيير الإيموجي
+      const emojiBtn = document.createElement('span');
+      emojiBtn.style.cssText = 'position:absolute;top:1px;left:20px;width:16px;height:16px;font-size:12px;line-height:1.3;cursor:pointer;opacity:.8;display:flex;align-items:center;justify-content:center';
+      emojiBtn.textContent = '✏️';
+      emojiBtn.title = 'تغيير الإيموجي';
+      emojiBtn.onclick = (e) => { e.stopPropagation(); this.showEmojiPicker(design.id); };
+      btn.appendChild(emojiBtn);
 
       // زر الحذف
       const del = document.createElement('span');
